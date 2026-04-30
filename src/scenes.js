@@ -196,21 +196,16 @@ function buildSpace() {
 
   // Star field
   const SC = 2500;
-  const { geo: sGeo, mat: sMat } = particleSystem(SC, { x: 120, y: 120, z: 80 }, 0xffffff, 0.09);
-  sGeo.attributes.position.array.forEach((_, i) => {
-    if (i % 3 === 2) sGeo.attributes.position.array[i] = -10 - Math.random() * 110;
-  });
+  const { pts: starPts, geo: sGeo, mat: sMat } = particleSystem(SC, { x: 120, y: 120, z: 80 }, 0xffffff, 0.09);
+  const sPos = sGeo.attributes.position.array;
+  for (let i = 0; i < SC; i++) sPos[i * 3 + 2] = -10 - Math.random() * 110;
   sGeo.attributes.position.needsUpdate = true;
-  const starGrp = new THREE.Points(sGeo, sMat);
-  // already added by particleSystem via scene.add — remove and re-add to grp
-  // Actually particleSystem adds to scene directly, that's fine
+
   updaters.push(t => {
-    starGrp.rotation.y = t * 0.008;
-    starGrp.rotation.x = t * 0.003;
+    starPts.rotation.y = t * 0.008;
+    starPts.rotation.x = t * 0.003;
     sMat.opacity = 0.75 + Math.sin(t * 0.4) * 0.1;
   });
-  // particleSystem adds pts to scene; we grab the pts ref
-  scene.children.forEach(c => { if (c instanceof THREE.Points && c.material === sMat) { Object.assign(starGrp, c); } });
 
   // Nebula clouds
   [0x3300ff, 0xcc0055, 0x0033ff, 0x550088].forEach((color, i) => {
@@ -226,10 +221,10 @@ function buildSpace() {
     });
   });
 
-  // Bright distant stars
+  // Bright twinkling stars
   for (let i = 0; i < 8; i++) {
     const geo = new THREE.SphereGeometry(0.06, 6, 6);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true });
     const s = new THREE.Mesh(geo, mat);
     s.position.set((Math.random() - 0.5) * 22, (Math.random() - 0.5) * 12, -4 - Math.random() * 12);
     scene.add(s);
