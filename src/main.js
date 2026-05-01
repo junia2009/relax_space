@@ -5,7 +5,7 @@ import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breath
 import { ACHIEVEMENTS, loadUnlocked, recordTheme, checkAchievements } from './achievements.js';
 
 // ── Version ────────────────────────────────────────────────────────────────
-const VERSION = 'v1.4.1';
+const VERSION = 'v1.5.0';
 
 // ── App state ──────────────────────────────────────────────────────────────
 const state = {
@@ -126,18 +126,28 @@ document.querySelector('#app').innerHTML = `
       </div>
 
       <div class="settings-row">
-        <div class="setting-group">
-          <span class="setting-label">タイマー</span>
-          <div class="option-row" id="timer-opts">
+        <div class="setting-pill-wrap">
+          <button class="setting-pill" id="timer-pill">
+            <span class="pill-label">タイマー</span>
+            <span class="pill-sep">|</span>
+            <span class="pill-value" id="timer-value">10分</span>
+            <span class="pill-arrow">›</span>
+          </button>
+          <div class="pill-opts" id="timer-opts">
             <button class="opt-btn" data-min="5">5分</button>
             <button class="opt-btn active" data-min="10">10分</button>
             <button class="opt-btn" data-min="20">20分</button>
             <button class="opt-btn" data-min="0">∞</button>
           </div>
         </div>
-        <div class="setting-group">
-          <span class="setting-label">呼吸法</span>
-          <div class="option-row" id="breath-opts">
+        <div class="setting-pill-wrap">
+          <button class="setting-pill" id="breath-pill">
+            <span class="pill-label">呼吸法</span>
+            <span class="pill-sep">|</span>
+            <span class="pill-value" id="breath-value">ボックス</span>
+            <span class="pill-arrow">›</span>
+          </button>
+          <div class="pill-opts" id="breath-opts">
             <button class="opt-btn active" data-breath="box">ボックス</button>
             <button class="opt-btn" data-breath="478">4-7-8</button>
             <button class="opt-btn" data-breath="relax">自然</button>
@@ -208,12 +218,27 @@ document.querySelectorAll('.theme-card').forEach(card => {
   });
 });
 
+// ── Setting pills (expand/collapse) ───────────────────────────────────────
+function togglePill(pillId, optsId) {
+  const pill = document.getElementById(pillId);
+  const opts = document.getElementById(optsId);
+  const isOpen = opts.classList.contains('open');
+  document.querySelectorAll('.pill-opts').forEach(o => o.classList.remove('open'));
+  document.querySelectorAll('.setting-pill').forEach(p => p.classList.remove('open'));
+  if (!isOpen) { opts.classList.add('open'); pill.classList.add('open'); }
+}
+document.getElementById('timer-pill').addEventListener('click', () => togglePill('timer-pill', 'timer-opts'));
+document.getElementById('breath-pill').addEventListener('click', () => togglePill('breath-pill', 'breath-opts'));
+
 // ── Timer options ──────────────────────────────────────────────────────────
 document.querySelectorAll('#timer-opts .opt-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#timer-opts .opt-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.minutes = parseInt(btn.dataset.min, 10);
+    document.getElementById('timer-value').textContent = btn.textContent;
+    document.getElementById('timer-opts').classList.remove('open');
+    document.getElementById('timer-pill').classList.remove('open');
   });
 });
 
@@ -223,6 +248,9 @@ document.querySelectorAll('#breath-opts .opt-btn').forEach(btn => {
     document.querySelectorAll('#breath-opts .opt-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.breathKey = btn.dataset.breath;
+    document.getElementById('breath-value').textContent = btn.textContent;
+    document.getElementById('breath-opts').classList.remove('open');
+    document.getElementById('breath-pill').classList.remove('open');
   });
 });
 
