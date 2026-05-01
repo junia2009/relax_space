@@ -364,18 +364,20 @@ html, body {
 /* Volume control */
 #vol-ctrl {
   position: absolute;
-  bottom: 2rem;
+  bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 0.75rem;
   pointer-events: all;
-  background: rgba(0,0,0,0.4);
-  backdrop-filter: blur(8px);
-  padding: 0.45rem 1rem 0.45rem 0.7rem;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 0.55rem 1.1rem 0.55rem 0.8rem;
   border-radius: 2rem;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  white-space: nowrap;
 }
 
 #mute-btn {
