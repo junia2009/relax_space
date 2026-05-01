@@ -10,7 +10,7 @@ let updaters = [];
 export function initScene(canvas) {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
   clock = new THREE.Clock();
   window.addEventListener('resize', onResize);
 }
@@ -47,9 +47,12 @@ export function stopScene() {
 
 function onResize() {
   if (!camera || !renderer) return;
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const canvas = renderer.domElement;
+  const w = canvas.clientWidth  || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(w, h, false);
 }
 
 function tick() {
