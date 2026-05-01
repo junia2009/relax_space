@@ -5,7 +5,7 @@ import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breath
 import { ACHIEVEMENTS, loadUnlocked, recordTheme, checkAchievements } from './achievements.js';
 
 // ── Version ────────────────────────────────────────────────────────────────
-const VERSION = 'v1.4.0';
+const VERSION = 'v1.4.1';
 
 // ── App state ──────────────────────────────────────────────────────────────
 const state = {
