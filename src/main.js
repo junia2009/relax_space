@@ -5,7 +5,7 @@ import * as THREE from 'three';
 
 // 初期画面：開始ボタンのみ
 document.querySelector('#app').innerHTML = `
-  <div id="start-screen" style="width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#001d2e;">
+  <div id="start-screen" style="width:100vw;height:100dvh;display:flex;align-items:center;justify-content:center;background:#001d2e;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box;">
     <button id="start-btn" style="font-size:2rem;padding:1.2em 2.5em;border-radius:1.5em;border:none;background:#44ddee;color:#fff;box-shadow:0 4px 16px #0008;cursor:pointer;">リラックスを始める</button>
   </div>
   <audio id="bgm" loop></audio>
@@ -13,7 +13,7 @@ document.querySelector('#app').innerHTML = `
 
 document.getElementById('start-btn').addEventListener('click', () => {
   // 画面を3D空間に切り替え
-  document.querySelector('#app').innerHTML = `<div id="three-container" style="width:100vw;height:100vh;"></div><audio id="bgm" loop controls style="position:fixed;bottom:16px;left:16px;z-index:1000;"></audio>`;
+  document.querySelector('#app').innerHTML = `<div id="three-container" style="width:100vw;height:100dvh;"></div><audio id="bgm" loop controls style="position:fixed;bottom:calc(16px + env(safe-area-inset-bottom));left:calc(16px + env(safe-area-inset-left));z-index:1000;"></audio>`;
 
   // Three.jsセットアップ
   const container = document.getElementById('three-container');
@@ -24,8 +24,15 @@ document.getElementById('start-btn').addEventListener('click', () => {
   camera.position.z = 10;
 
   const renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
 
   // 簡単な海の生き物（球体）を複数配置
   const creatures = [];
