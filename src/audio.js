@@ -256,21 +256,6 @@ function startFire(ctx, dest, gen) {
   flickLfo.connect(flickG); flickG.connect(warmG.gain);
   flickLfo.start(); track(flickLfo);
 
-  // パチパチ: pink → HP 2000 Hz → 超低音量 + 不規則LFO
-  const crackSrc = ctx.createBufferSource();
-  crackSrc.buffer = pinkNoiseBuffer(ctx, 3); crackSrc.loop = true;
-  const crackHp = ctx.createBiquadFilter();
-  crackHp.type = 'highpass'; crackHp.frequency.value = 2000;
-  const crackG = ctx.createGain(); crackG.gain.value = 0.045;
-  const crackLfo = ctx.createOscillator();
-  const crackLfoG = ctx.createGain();
-  crackLfo.type = 'sawtooth'; crackLfo.frequency.value = 9;
-  crackLfoG.gain.value = 0.03;
-  crackLfo.connect(crackLfoG); crackLfoG.connect(crackG.gain);
-  crackSrc.connect(crackHp); crackHp.connect(crackG); crackG.connect(dest);
-  crackSrc.start(); crackLfo.start();
-  track(crackSrc); track(crackLfo);
-
   // 炉床の体感振動: 60 Hz + 90 Hz (純正5度)
   justDrone(ctx, dest, 60, [1, 1.5], 0.065);
 
