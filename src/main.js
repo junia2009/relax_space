@@ -3,6 +3,9 @@ import { initScene, startThemeScene, stopScene } from './scenes.js';
 import { initAudio, startThemeAudio, stopAudio, playBell, setVolume } from './audio.js';
 import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breathing.js';
 
+// ── Version ────────────────────────────────────────────────────────────────
+const VERSION = 'v1.0.0';
+
 // ── App state ──────────────────────────────────────────────────────────────
 const state = {
   theme:    'ocean',
@@ -128,6 +131,7 @@ document.querySelector('#app').innerHTML = `
 
       <button class="start-btn" id="start-btn">は じ め る</button>
     </div>
+    <p class="version-badge">${VERSION}</p>
   </div>
 
   <!-- ── Session ── -->

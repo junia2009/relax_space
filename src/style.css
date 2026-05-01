@@ -324,6 +324,17 @@ html, body {
   box-shadow: 0 0 28px rgba(255,255,255,0.08);
 }
 
+/* Version badge */
+.version-badge {
+  position: absolute;
+  bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
+  right: 1.2rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.18);
+  pointer-events: none;
+}
+
 /* ── Session ──────────────────────────────────────────────────────────────── */
 #session-screen { background: #000; }
 
