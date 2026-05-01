@@ -4,7 +4,7 @@ import { initAudio, startThemeAudio, stopAudio, playBell, setVolume } from './au
 import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breathing.js';
 
 // ── Version ────────────────────────────────────────────────────────────────
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 
 // ── App state ──────────────────────────────────────────────────────────────
 const state = {
