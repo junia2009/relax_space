@@ -72,6 +72,15 @@ html, body {
   line-height: 1;
 }
 
+.app-desc {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.38);
+  letter-spacing: 0.06em;
+  line-height: 1.8;
+  text-align: center;
+  max-width: 280px;
+}
+
 /* Theme grid */
 .themes-grid {
   display: grid;
@@ -81,6 +90,8 @@ html, body {
 }
 
 .theme-card {
+  position: relative;
+  overflow: hidden;
   padding: 1.25rem 1rem;
   border-radius: 0.9rem;
   border: 1px solid rgba(255,255,255,0.08);
@@ -89,6 +100,9 @@ html, body {
   transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
   user-select: none;
 }
+
+/* カード内コンテンツをアニメーション疑似要素の上に確保 */
+.theme-emoji, .theme-name, .theme-desc { position: relative; z-index: 1; }
 
 .theme-card:hover {
   transform: translateY(-2px);
@@ -104,6 +118,133 @@ html, body {
 .theme-card[data-theme="forest"] { background: linear-gradient(145deg,#050f05,#0a2510); }
 .theme-card[data-theme="space"]  { background: linear-gradient(145deg,#05001a,#0d0028); }
 .theme-card[data-theme="fire"]   { background: linear-gradient(145deg,#180400,#2c0a00); }
+
+/* ── 深海: 揺れる光の柱 ─────────────────────────────────────────────────── */
+.theme-card[data-theme="ocean"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 55% at 50% -5%, rgba(40,140,255,0.38) 0%, transparent 65%);
+  animation: ocean-ray 5s ease-in-out infinite;
+}
+.theme-card[data-theme="ocean"]::after {
+  content: '';
+  position: absolute;
+  width: 3px; height: 3px; border-radius: 50%;
+  top: 28%; left: 12%;
+  background: rgba(100,210,255,0.9);
+  box-shadow:
+    18px 8px 2px 1px rgba(100,200,255,0.5),
+    48px -2px 1px 0   rgba(100,200,255,0.4),
+    82px 14px 2px 1px rgba(100,200,255,0.6),
+    8px  42px 1px 0   rgba(100,200,255,0.35),
+    60px 50px 2px 1px rgba(100,200,255,0.5);
+  animation: ocean-dots 7s ease-in-out infinite;
+}
+@keyframes ocean-ray {
+  0%,100% { opacity:0.5; transform:scaleX(1) translateY(0); }
+  50%      { opacity:0.9; transform:scaleX(1.18) translateY(-3px); }
+}
+@keyframes ocean-dots {
+  0%,100% { opacity:0.4; transform:translateY(0); }
+  50%      { opacity:0.85; transform:translateY(-5px); }
+}
+
+/* ── 森: 蛍の光 ─────────────────────────────────────────────────────────── */
+.theme-card[data-theme="forest"]::before {
+  content: '';
+  position: absolute;
+  width: 2px; height: 2px; border-radius: 50%;
+  top: 22%; left: 14%;
+  background: rgba(160,255,130,0.95);
+  box-shadow:
+    32px 12px 0 1px rgba(160,255,100,0.7),
+    68px  4px 0 0   rgba(190,255,130,0.55),
+    92px 22px 0 1px rgba(160,255,140,0.75),
+    14px 52px 0 0   rgba(180,255,120,0.5),
+    52px 44px 0 1px rgba(160,255,100,0.7),
+    80px 56px 0 0   rgba(160,255,150,0.4);
+  animation: firefly-blink 4s ease-in-out infinite;
+}
+.theme-card[data-theme="forest"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 65% 50% at 35% 65%, rgba(20,70,20,0.45) 0%, transparent 70%);
+  animation: forest-glow 7s ease-in-out infinite alternate;
+}
+@keyframes firefly-blink {
+  0%,100% { opacity:0.25; }
+  20%      { opacity:0.95; }
+  55%      { opacity:0.45; }
+  80%      { opacity:1; }
+}
+@keyframes forest-glow {
+  0%   { opacity:0.3; }
+  100% { opacity:0.75; }
+}
+
+/* ── 宇宙: 星の瞬き ─────────────────────────────────────────────────────── */
+.theme-card[data-theme="space"]::before {
+  content: '';
+  position: absolute;
+  width: 1px; height: 1px; border-radius: 50%;
+  top: 12%; left: 8%;
+  background: #fff;
+  box-shadow:
+    22px  6px 0 0   rgba(255,255,255,0.9),
+    48px  2px 0 0   rgba(255,255,255,0.6),
+    72px 16px 0 1px rgba(255,255,255,0.8),
+    92px  4px 0 0   rgba(255,255,255,0.5),
+    12px 36px 0 0   rgba(255,255,255,0.7),
+    36px 46px 0 0   rgba(255,255,255,0.55),
+    62px 38px 0 1px rgba(255,255,255,0.85),
+    86px 52px 0 0   rgba(255,255,255,0.5),
+    28px 62px 0 0   rgba(255,255,255,0.65),
+    76px 66px 0 0   rgba(255,255,255,0.75);
+  animation: star-twinkle 3.5s ease-in-out infinite;
+}
+.theme-card[data-theme="space"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 55% 45% at 72% 28%, rgba(100,55,210,0.28) 0%, transparent 60%);
+  animation: nebula-pulse 9s ease-in-out infinite alternate;
+}
+@keyframes star-twinkle {
+  0%,100% { opacity:0.55; }
+  25%      { opacity:1; }
+  55%      { opacity:0.35; }
+  80%      { opacity:0.9; }
+}
+@keyframes nebula-pulse {
+  0%   { opacity:0.25; }
+  100% { opacity:0.7; }
+}
+
+/* ── 焚き火: 炎のゆらぎ ─────────────────────────────────────────────────── */
+.theme-card[data-theme="fire"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 65% at 50% 115%, rgba(255,95,0,0.55) 0%, rgba(200,45,0,0.22) 40%, transparent 68%);
+  animation: fire-flicker-a 2.2s ease-in-out infinite alternate;
+}
+.theme-card[data-theme="fire"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 55% 40% at 50% 105%, rgba(255,200,0,0.22) 0%, transparent 55%);
+  animation: fire-flicker-b 1.8s ease-in-out infinite alternate;
+}
+@keyframes fire-flicker-a {
+  0%   { opacity:0.65; transform:scaleX(0.93) translateY(2px); }
+  100% { opacity:1;    transform:scaleX(1.07) translateY(-3px); }
+}
+@keyframes fire-flicker-b {
+  0%   { opacity:0.35; transform:scaleX(1.06); }
+  100% { opacity:0.75; transform:scaleX(0.88); }
+}
 
 .theme-emoji { font-size: 1.6rem; margin-bottom: 0.4rem; }
 .theme-name  { font-size: 1rem; font-weight: 400; color: rgba(255,255,255,0.88); }
