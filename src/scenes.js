@@ -233,92 +233,158 @@ function buildSpace() {
   }
 }
 
+// ─── Soft circle texture for particles ────────────────────────────────────
+function softCircleTexture() {
+  const sz = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = sz; canvas.height = sz;
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createRadialGradient(sz/2, sz/2, 0, sz/2, sz/2, sz/2);
+  g.addColorStop(0,   'rgba(255,255,255,1)');
+  g.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+  g.addColorStop(1,   'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, sz, sz);
+  return new THREE.CanvasTexture(canvas);
+}
+
 // ─── Fire ─────────────────────────────────────────────────────────────────
 function buildFire() {
   scene.background = new THREE.Color(0x060200);
-  scene.fog = new THREE.FogExp2(0x060200, 0.04);
-  camera.position.set(0, 2, 14);
-  camera.lookAt(0, 0.5, 0);
+  scene.fog = new THREE.FogExp2(0x080300, 0.035);
 
-  scene.add(new THREE.AmbientLight(0x220a00, 0.4));
+  // カメラを高めに置いて見下ろす → 炎が画面下部に収まり呼吸円と重ならない
+  camera.position.set(0, 7, 11);
+  camera.lookAt(0, 1, 0);
+
+  scene.add(new THREE.AmbientLight(0x1a0800, 0.5));
 
   // Ground
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshPhongMaterial({ color: 0x100600 }));
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(40, 40),
+    new THREE.MeshPhongMaterial({ color: 0x0e0500 })
+  );
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -2.2;
+  ground.position.y = -3.2;
   scene.add(ground);
 
-  // Logs
-  const logMat = new THREE.MeshPhongMaterial({ color: 0x251008 });
+  // Logs（地面に合わせて下げる）
+  const logMat = new THREE.MeshPhongMaterial({ color: 0x2a1005 });
   [[-0.55, 40], [0.55, -40]].forEach(([x, rot]) => {
-    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 2.2, 7), logMat);
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2.4, 8), logMat);
     log.rotation.z = (rot * Math.PI) / 180;
-    log.position.set(x * 0.5, -2, 0);
+    log.position.set(x * 0.6, -2.9, 0);
     scene.add(log);
   });
 
   // Flickering fire light
-  const fireLight = addLight(0xff5500, 4, 0, 0.5, 0, 18);
+  const fireLight = addLight(0xff5500, 5, 0, -1, 2, 22);
+  // 遠くを照らす補助光（地面や背景を温かく）
+  const fillLight = addLight(0xff3300, 1.5, 0, 3, -2, 30);
   updaters.push(t => {
-    fireLight.intensity = 3.5 + Math.sin(t * 9) * 0.7 + Math.sin(t * 14.3) * 0.4;
+    fireLight.intensity = 4 + Math.sin(t * 9) * 0.8 + Math.sin(t * 14.3) * 0.5;
     fireLight.color.setHSL(0.06 + Math.sin(t * 6) * 0.02, 1, 0.5);
+    fillLight.intensity = 1.2 + Math.sin(t * 3.7) * 0.3;
   });
 
-  // Fire particles
-  const FC = 180;
+  const tex = softCircleTexture();
+
+  // ── 炎パーティクル ──────────────────────────────────────────────────────
+  const FC = 220;
   const fPos = new Float32Array(FC * 3);
   const fLife = new Float32Array(FC);
   const fSpd = new Float32Array(FC);
   const resetFire = i => {
-    fPos[i * 3]     = (Math.random() - 0.5) * 1.0;
-    fPos[i * 3 + 1] = -1.8 + Math.random() * 0.4;
-    fPos[i * 3 + 2] = (Math.random() - 0.5) * 0.9;
-    fLife[i] = 0;
-    fSpd[i] = 0.022 + Math.random() * 0.04;
+    fPos[i * 3]     = (Math.random() - 0.5) * 1.1;
+    fPos[i * 3 + 1] = -2.6 + Math.random() * 0.3;
+    fPos[i * 3 + 2] = (Math.random() - 0.5) * 1.0;
+    fLife[i] = Math.random() * 0.3; // ランダム初期位相でちらつき防止
+    fSpd[i]  = 0.02 + Math.random() * 0.035;
   };
   for (let i = 0; i < FC; i++) resetFire(i);
   const fGeo = new THREE.BufferGeometry();
   fGeo.setAttribute('position', new THREE.BufferAttribute(fPos, 3));
-  const fMat = new THREE.PointsMaterial({ color: 0xff4400, size: 0.22, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+  const fMat = new THREE.PointsMaterial({
+    map: tex, color: 0xff5500, size: 0.4,
+    transparent: true, opacity: 0.75,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
   scene.add(new THREE.Points(fGeo, fMat));
 
-  // Ember particles (tiny, high-rising)
-  const EC = 70;
+  // 内炎（より明るい黄）
+  const FC2 = 100;
+  const f2Pos = new Float32Array(FC2 * 3);
+  const f2Life = new Float32Array(FC2);
+  const f2Spd = new Float32Array(FC2);
+  const resetFire2 = i => {
+    f2Pos[i * 3]     = (Math.random() - 0.5) * 0.5;
+    f2Pos[i * 3 + 1] = -2.5 + Math.random() * 0.2;
+    f2Pos[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+    f2Life[i] = Math.random() * 0.3;
+    f2Spd[i]  = 0.028 + Math.random() * 0.03;
+  };
+  for (let i = 0; i < FC2; i++) resetFire2(i);
+  const f2Geo = new THREE.BufferGeometry();
+  f2Geo.setAttribute('position', new THREE.BufferAttribute(f2Pos, 3));
+  const f2Mat = new THREE.PointsMaterial({
+    map: tex, color: 0xffcc00, size: 0.25,
+    transparent: true, opacity: 0.6,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  scene.add(new THREE.Points(f2Geo, f2Mat));
+
+  // ── エンバー（上昇する火の粉）───────────────────────────────────────────
+  const EC = 80;
   const ePos = new Float32Array(EC * 3);
   const eLife = new Float32Array(EC);
   const eSpd = new Float32Array(EC);
   const eDrift = new Float32Array(EC * 2);
   const resetEmber = i => {
     ePos[i * 3]     = (Math.random() - 0.5) * 0.6;
-    ePos[i * 3 + 1] = -1.5 + Math.random() * 0.3;
+    ePos[i * 3 + 1] = -2.4 + Math.random() * 0.3;
     ePos[i * 3 + 2] = (Math.random() - 0.5) * 0.6;
     eLife[i] = 0;
-    eSpd[i] = 0.012 + Math.random() * 0.02;
-    eDrift[i * 2]     = (Math.random() - 0.5) * 0.008;
-    eDrift[i * 2 + 1] = (Math.random() - 0.5) * 0.008;
+    eSpd[i]  = 0.01 + Math.random() * 0.018;
+    eDrift[i * 2]     = (Math.random() - 0.5) * 0.007;
+    eDrift[i * 2 + 1] = (Math.random() - 0.5) * 0.007;
   };
   for (let i = 0; i < EC; i++) resetEmber(i);
   const eGeo = new THREE.BufferGeometry();
   eGeo.setAttribute('position', new THREE.BufferAttribute(ePos, 3));
-  const eMat = new THREE.PointsMaterial({ color: 0xffaa00, size: 0.07, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  const eMat = new THREE.PointsMaterial({
+    map: tex, color: 0xffaa22, size: 0.1,
+    transparent: true, opacity: 0.95,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
   scene.add(new THREE.Points(eGeo, eMat));
 
   updaters.push(t => {
+    // 外炎
     for (let i = 0; i < FC; i++) {
       fPos[i * 3 + 1] += fSpd[i];
-      fPos[i * 3]     += Math.sin(t * 2.8 + i * 0.4) * 0.003;
-      fLife[i] += fSpd[i] * 0.45;
-      if (fLife[i] > 1 || fPos[i * 3 + 1] > 2.5) resetFire(i);
+      fPos[i * 3]     += Math.sin(t * 2.5 + i * 0.5) * 0.004;
+      fLife[i] += fSpd[i] * 0.5;
+      if (fLife[i] > 1 || fPos[i * 3 + 1] > -0.8) resetFire(i);
     }
     fGeo.attributes.position.needsUpdate = true;
-    fMat.color.setHSL(0.06 + Math.sin(t * 4) * 0.025, 1, 0.5);
+    fMat.color.setHSL(0.055 + Math.sin(t * 5) * 0.02, 1, 0.52);
 
+    // 内炎
+    for (let i = 0; i < FC2; i++) {
+      f2Pos[i * 3 + 1] += f2Spd[i];
+      f2Pos[i * 3]     += Math.sin(t * 3 + i * 0.7) * 0.003;
+      f2Life[i] += f2Spd[i] * 0.5;
+      if (f2Life[i] > 1 || f2Pos[i * 3 + 1] > -1.2) resetFire2(i);
+    }
+    f2Geo.attributes.position.needsUpdate = true;
+
+    // エンバー
     for (let i = 0; i < EC; i++) {
-      ePos[i * 3]     += eDrift[i * 2] + Math.sin(t * 1.5 + i) * 0.003;
+      ePos[i * 3]     += eDrift[i * 2] + Math.sin(t * 1.2 + i) * 0.003;
       ePos[i * 3 + 1] += eSpd[i];
       ePos[i * 3 + 2] += eDrift[i * 2 + 1];
-      eLife[i] += eSpd[i] * 0.3;
-      if (eLife[i] > 1 || ePos[i * 3 + 1] > 6) resetEmber(i);
+      eLife[i] += eSpd[i] * 0.25;
+      if (eLife[i] > 1 || ePos[i * 3 + 1] > 5) resetEmber(i);
     }
     eGeo.attributes.position.needsUpdate = true;
   });
