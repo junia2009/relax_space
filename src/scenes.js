@@ -91,17 +91,17 @@ function buildOcean() {
   scene.fog = new THREE.FogExp2(0x000c1a, 0.04);
   camera.position.set(0, 0, 18);
 
-  scene.add(new THREE.AmbientLight(0x0a1a33, 1));
-  const l1 = addLight(0x0055cc, 2, 0, 6, 6, 40);
-  const l2 = addLight(0x00ccee, 1, -6, -3, 4, 30);
+  scene.add(new THREE.AmbientLight(0x112244, 1.4));
+  const l1 = addLight(0x0055cc, 2.8, 0, 6, 6, 40);
+  const l2 = addLight(0x00ccee, 1.6, -6, -3, 4, 30);
 
   updaters.push(t => {
-    l1.intensity = 2 + Math.sin(t * 0.6) * 0.4;
-    l2.intensity = 1 + Math.cos(t * 0.4) * 0.3;
+    l1.intensity = 2.8 + Math.sin(t * 0.6) * 0.5;
+    l2.intensity = 1.6 + Math.cos(t * 0.4) * 0.4;
   });
 
   // Rising plankton particles
-  const { geo, pos, mat } = particleSystem(400, { x: 35, y: 25, z: 22 }, 0x33aaff, 0.07);
+  const { geo, pos, mat } = particleSystem(400, { x: 35, y: 25, z: 22 }, 0x33aaff, 0.1);
   const baseY = pos.slice();
   updaters.push(t => {
     for (let i = 0; i < 400; i++) {
@@ -110,7 +110,7 @@ function buildOcean() {
       pos[i * 3]     += Math.sin(t * 0.3 + i * 0.17) * 0.002;
     }
     geo.attributes.position.needsUpdate = true;
-    mat.opacity = 0.55 + Math.sin(t * 0.5) * 0.1;
+    mat.opacity = 0.7 + Math.sin(t * 0.5) * 0.12;
   });
 
   // Jellyfish
@@ -118,7 +118,7 @@ function buildOcean() {
     const grp = new THREE.Group();
     const r = 0.6 + Math.random() * 0.5;
     const bodyGeo = new THREE.SphereGeometry(r, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
-    const bodyMat = new THREE.MeshPhongMaterial({ color: 0x33aaff, emissive: 0x002244, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+    const bodyMat = new THREE.MeshPhongMaterial({ color: 0x33aaff, emissive: 0x003a66, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
     grp.add(new THREE.Mesh(bodyGeo, bodyMat));
 
     for (let k = 0; k < 6; k++) {
@@ -148,12 +148,12 @@ function buildForest() {
   scene.fog = new THREE.FogExp2(0x020804, 0.03);
   camera.position.set(0, 1, 18);
 
-  scene.add(new THREE.AmbientLight(0x0a1a0a, 0.6));
-  addLight(0x334422, 0.4, 0, 8, 4);
+  scene.add(new THREE.AmbientLight(0x0f2010, 1.0));
+  addLight(0x334422, 0.8, 0, 8, 4);
 
   // Firefly particles
   const FC = 220;
-  const { geo, pos, mat } = particleSystem(FC, { x: 28, y: 14, z: 18 }, 0x99ffaa, 0.14);
+  const { geo, pos, mat } = particleSystem(FC, { x: 28, y: 14, z: 18 }, 0x99ffaa, 0.18);
   const fPhase = Array.from({ length: FC }, () => Math.random() * Math.PI * 2);
   const fSpeed = Array.from({ length: FC }, () => 0.6 + Math.random() * 1.2);
   updaters.push(t => {
@@ -163,7 +163,7 @@ function buildForest() {
       pos[i * 3 + 2] += Math.sin(t * fSpeed[i] * 0.09 + fPhase[i] * 1.4) * 0.005;
     }
     geo.attributes.position.needsUpdate = true;
-    mat.opacity = 0.55 + Math.sin(t * 1.8) * 0.25;
+    mat.opacity = 0.72 + Math.sin(t * 1.8) * 0.28;
   });
 
   // Tree silhouettes
@@ -194,12 +194,12 @@ function buildSpace() {
   scene.background = new THREE.Color(0x000008);
   camera.position.set(0, 0, 15);
 
-  scene.add(new THREE.AmbientLight(0x0a0820, 0.5));
-  addLight(0x5533ff, 0.6, 0, 0, 8, 60);
+  scene.add(new THREE.AmbientLight(0x0f0c2e, 0.9));
+  addLight(0x5533ff, 1.2, 0, 0, 8, 60);
 
   // Star field
   const SC = 2500;
-  const { pts: starPts, geo: sGeo, mat: sMat } = particleSystem(SC, { x: 120, y: 120, z: 80 }, 0xffffff, 0.09);
+  const { pts: starPts, geo: sGeo, mat: sMat } = particleSystem(SC, { x: 120, y: 120, z: 80 }, 0xffffff, 0.13);
   const sPos = sGeo.attributes.position.array;
   for (let i = 0; i < SC; i++) sPos[i * 3 + 2] = -10 - Math.random() * 110;
   sGeo.attributes.position.needsUpdate = true;
@@ -207,32 +207,32 @@ function buildSpace() {
   updaters.push(t => {
     starPts.rotation.y = t * 0.008;
     starPts.rotation.x = t * 0.003;
-    sMat.opacity = 0.75 + Math.sin(t * 0.4) * 0.1;
+    sMat.opacity = 0.88 + Math.sin(t * 0.4) * 0.12;
   });
 
   // Nebula clouds
   [0x3300ff, 0xcc0055, 0x0033ff, 0x550088].forEach((color, i) => {
     const geo = new THREE.SphereGeometry(3 + Math.random() * 3, 12, 12);
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.035, blending: THREE.AdditiveBlending, depthWrite: false });
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.055, blending: THREE.AdditiveBlending, depthWrite: false });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set((Math.random() - 0.5) * 22, (Math.random() - 0.5) * 12, -18 - Math.random() * 20);
     scene.add(mesh);
     updaters.push(t => {
       mesh.rotation.x = t * 0.04 + i;
       mesh.rotation.y = t * 0.025 + i;
-      mat.opacity = 0.025 + Math.sin(t * 0.18 + i) * 0.012;
+      mat.opacity = 0.04 + Math.sin(t * 0.18 + i) * 0.02;
     });
   });
 
   // Bright twinkling stars
   for (let i = 0; i < 8; i++) {
-    const geo = new THREE.SphereGeometry(0.06, 6, 6);
+    const geo = new THREE.SphereGeometry(0.08, 6, 6);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true });
     const s = new THREE.Mesh(geo, mat);
     s.position.set((Math.random() - 0.5) * 22, (Math.random() - 0.5) * 12, -4 - Math.random() * 12);
     scene.add(s);
     const ph = Math.random() * Math.PI * 2;
-    updaters.push(t => { mat.opacity = 0.5 + Math.sin(t * 1.4 + ph) * 0.4; });
+    updaters.push(t => { mat.opacity = 0.65 + Math.sin(t * 1.4 + ph) * 0.35; });
   }
 }
 
@@ -260,7 +260,7 @@ function buildFire() {
   camera.position.set(0, 7, 11);
   camera.lookAt(0, 1, 0);
 
-  scene.add(new THREE.AmbientLight(0x1a0800, 0.5));
+  scene.add(new THREE.AmbientLight(0x220a00, 0.9));
 
   // Ground
   const ground = new THREE.Mesh(
@@ -281,13 +281,13 @@ function buildFire() {
   });
 
   // Flickering fire light
-  const fireLight = addLight(0xff5500, 5, 0, -1, 2, 22);
+  const fireLight = addLight(0xff5500, 6, 0, -1, 2, 22);
   // 遠くを照らす補助光（地面や背景を温かく）
-  const fillLight = addLight(0xff3300, 1.5, 0, 3, -2, 30);
+  const fillLight = addLight(0xff3300, 2.2, 0, 3, -2, 30);
   updaters.push(t => {
-    fireLight.intensity = 4 + Math.sin(t * 9) * 0.8 + Math.sin(t * 14.3) * 0.5;
+    fireLight.intensity = 5.5 + Math.sin(t * 9) * 0.8 + Math.sin(t * 14.3) * 0.5;
     fireLight.color.setHSL(0.06 + Math.sin(t * 6) * 0.02, 1, 0.5);
-    fillLight.intensity = 1.2 + Math.sin(t * 3.7) * 0.3;
+    fillLight.intensity = 1.8 + Math.sin(t * 3.7) * 0.4;
   });
 
   const tex = softCircleTexture();
@@ -308,8 +308,8 @@ function buildFire() {
   const fGeo = new THREE.BufferGeometry();
   fGeo.setAttribute('position', new THREE.BufferAttribute(fPos, 3));
   const fMat = new THREE.PointsMaterial({
-    map: tex, color: 0xff5500, size: 0.4,
-    transparent: true, opacity: 0.75,
+    map: tex, color: 0xff5500, size: 0.45,
+    transparent: true, opacity: 0.88,
     blending: THREE.AdditiveBlending, depthWrite: false,
   });
   scene.add(new THREE.Points(fGeo, fMat));
@@ -330,8 +330,8 @@ function buildFire() {
   const f2Geo = new THREE.BufferGeometry();
   f2Geo.setAttribute('position', new THREE.BufferAttribute(f2Pos, 3));
   const f2Mat = new THREE.PointsMaterial({
-    map: tex, color: 0xffcc00, size: 0.25,
-    transparent: true, opacity: 0.6,
+    map: tex, color: 0xffcc00, size: 0.28,
+    transparent: true, opacity: 0.78,
     blending: THREE.AdditiveBlending, depthWrite: false,
   });
   scene.add(new THREE.Points(f2Geo, f2Mat));
