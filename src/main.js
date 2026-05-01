@@ -76,6 +76,13 @@ const THEME_COLORS = {
   fire:   '#ff6600',
 };
 
+const THEME_GLOW = {
+  ocean:  'rgba(68,170,255,0.22)',
+  forest: 'rgba(85,221,136,0.22)',
+  space:  'rgba(153,102,255,0.22)',
+  fire:   'rgba(255,102,0,0.22)',
+};
+
 // ── Build DOM ──────────────────────────────────────────────────────────────
 document.querySelector('#app').innerHTML = `
   <!-- ── Home ── -->
@@ -239,6 +246,7 @@ function startSession() {
 
   // Theme accent color
   document.documentElement.style.setProperty('--theme', THEME_COLORS[state.theme] ?? '#ffffff');
+  document.documentElement.style.setProperty('--theme-glow', THEME_GLOW[state.theme] ?? 'rgba(255,255,255,0.12)');
 
   // Three.js scene
   startThemeScene(state.theme);
