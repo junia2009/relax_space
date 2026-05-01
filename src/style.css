@@ -135,17 +135,17 @@ html, body {
 
 .theme-carousel {
   position: relative;
-  height: 132px;
+  height: 158px;
   perspective: 700px;
 }
 
 .theme-card {
   position: absolute;
-  width: 160px;
+  width: 190px;
   height: 100%;
-  left: calc(50% - 80px);
+  left: calc(50% - 95px);
   overflow: hidden;
-  padding: 1.25rem 1rem;
+  padding: 1.5rem 1.25rem;
   border-radius: 0.9rem;
   border: 1px solid rgba(255,255,255,0.08);
   cursor: pointer;
@@ -166,12 +166,12 @@ html, body {
   z-index: 3;
 }
 .theme-card[data-pos="right"] {
-  transform: translateX(155px) translateZ(-20px) rotateY(-52deg);
+  transform: translateX(180px) translateZ(-20px) rotateY(-52deg);
   opacity: 0.58;
   z-index: 2;
 }
 .theme-card[data-pos="left"] {
-  transform: translateX(-155px) translateZ(-20px) rotateY(52deg);
+  transform: translateX(-180px) translateZ(-20px) rotateY(52deg);
   opacity: 0.58;
   z-index: 2;
 }
@@ -322,9 +322,9 @@ html, body {
   100% { opacity:0.75; transform:scaleX(0.88); }
 }
 
-.theme-emoji { font-size: 1.6rem; margin-bottom: 0.4rem; }
-.theme-name  { font-size: 1rem; font-weight: 400; color: rgba(255,255,255,0.88); }
-.theme-desc  { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-top: 0.2rem; }
+.theme-emoji { font-size: 1.9rem; margin-bottom: 0.5rem; }
+.theme-name  { font-size: 1.05rem; font-weight: 400; color: rgba(255,255,255,0.88); }
+.theme-desc  { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 0.25rem; }
 
 /* Carousel dots */
 .carousel-dots {
@@ -347,15 +347,15 @@ html, body {
 }
 
 @media (max-height: 700px) {
-  .theme-carousel { height: 115px; }
-  .theme-card     { padding: 0.85rem 0.75rem; }
-  .theme-emoji    { font-size: 1.35rem; margin-bottom: 0.25rem; }
+  .theme-carousel { height: 136px; }
+  .theme-card     { padding: 1.1rem 1rem; }
+  .theme-emoji    { font-size: 1.6rem; margin-bottom: 0.35rem; }
 }
 
 @media (max-height: 580px) {
-  .theme-carousel { height: 98px; }
-  .theme-card     { padding: 0.6rem 0.6rem; }
-  .theme-emoji    { font-size: 1.1rem; margin-bottom: 0.15rem; }
+  .theme-carousel { height: 112px; }
+  .theme-card     { padding: 0.75rem 0.75rem; }
+  .theme-emoji    { font-size: 1.3rem; margin-bottom: 0.2rem; }
   .theme-desc     { display: none; }
   .start-btn      { padding: 0.7rem 2.5rem; }
 }
