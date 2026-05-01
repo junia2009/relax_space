@@ -6,7 +6,7 @@ export const PATTERNS = {
 };
 
 const PHASE_NAMES  = ['吸う', '止める', '吐く', '止める'];
-const PHASE_SCALE  = [1.5, 1.5, 1.0, 1.0]; // target scale at end of phase
+const PHASE_SCALE  = [1.65, 1.65, 1.0, 1.0]; // target scale at end of phase
 
 let circleEl = null;
 let phaseEl  = null;

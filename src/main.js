@@ -83,6 +83,13 @@ const THEME_GLOW = {
   fire:   'rgba(255,102,0,0.22)',
 };
 
+const THEME_GLOW_STRONG = {
+  ocean:  'rgba(68,170,255,0.5)',
+  forest: 'rgba(85,221,136,0.5)',
+  space:  'rgba(153,102,255,0.5)',
+  fire:   'rgba(255,102,0,0.5)',
+};
+
 // ── Build DOM ──────────────────────────────────────────────────────────────
 document.querySelector('#app').innerHTML = `
   <!-- ── Home ── -->
@@ -144,13 +151,16 @@ document.querySelector('#app').innerHTML = `
   <!-- ── Session ── -->
   <div id="session-screen" class="screen hidden">
     <canvas id="three-canvas"></canvas>
+    <div id="session-vignette"></div>
 
     <div id="ui-overlay">
-      <button id="back-btn">← 戻る</button>
-      <div id="timer-display"></div>
-      <div id="vol-ctrl">
-        <button id="mute-btn" aria-label="ミュート">🔊</button>
-        <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="1" aria-label="音量">
+      <div id="session-controls">
+        <button id="back-btn">← 戻る</button>
+        <div id="timer-display"></div>
+        <div id="vol-ctrl">
+          <button id="mute-btn" aria-label="ミュート">🔊</button>
+          <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="1" aria-label="音量">
+        </div>
       </div>
 
       <div id="breathing-wrap">
@@ -172,6 +182,8 @@ document.querySelector('#app').innerHTML = `
       <button class="cmp-btn" id="cmp-back">ホームに戻る</button>
     </div>
   </div>
+
+  <div id="transition-veil"></div>
 `;
 
 // ── Init Three.js ──────────────────────────────────────────────────────────
@@ -214,6 +226,16 @@ document.querySelectorAll('#breath-opts .opt-btn').forEach(btn => {
 // ── Home stats on load ─────────────────────────────────────────────────────
 renderHomeStats();
 
+// ── Control auto-hide ──────────────────────────────────────────────────────
+let fadeTimer = null;
+function showSessionControls() {
+  const el = document.getElementById('session-controls');
+  if (!el) return;
+  el.classList.remove('faded');
+  clearTimeout(fadeTimer);
+  fadeTimer = setTimeout(() => el.classList.add('faded'), 4000);
+}
+
 // ── Start / End ────────────────────────────────────────────────────────────
 document.getElementById('start-btn').addEventListener('click', startSession);
 document.getElementById('back-btn').addEventListener('click', endSession);
@@ -233,50 +255,62 @@ document.getElementById('vol-slider').addEventListener('input', e => {
 });
 
 function startSession() {
-  document.getElementById('home-screen').classList.add('hidden');
-  document.getElementById('session-screen').classList.remove('hidden');
-  document.getElementById('completion').classList.remove('visible');
+  const veil = document.getElementById('transition-veil');
+  veil.classList.add('active');
 
-  // Reset volume UI
-  vol.muted = false;
-  vol.level = 1;
-  document.getElementById('mute-btn').textContent = '🔊';
-  document.getElementById('vol-slider').value = 1;
+  setTimeout(() => {
+    document.getElementById('home-screen').classList.add('hidden');
+    document.getElementById('session-screen').classList.remove('hidden');
+    document.getElementById('completion').classList.remove('visible');
 
-  // Theme accent color
-  document.documentElement.style.setProperty('--theme', THEME_COLORS[state.theme] ?? '#ffffff');
-  document.documentElement.style.setProperty('--theme-glow', THEME_GLOW[state.theme] ?? 'rgba(255,255,255,0.12)');
+    // Reset volume UI
+    vol.muted = false;
+    vol.level = 1;
+    document.getElementById('mute-btn').textContent = '🔊';
+    document.getElementById('vol-slider').value = 1;
 
-  // Three.js scene
-  startThemeScene(state.theme);
+    // Theme accent color
+    document.documentElement.style.setProperty('--theme', THEME_COLORS[state.theme] ?? '#ffffff');
+    document.documentElement.style.setProperty('--theme-glow', THEME_GLOW[state.theme] ?? 'rgba(255,255,255,0.12)');
+    document.documentElement.style.setProperty('--theme-glow-strong', THEME_GLOW_STRONG[state.theme] ?? 'rgba(255,255,255,0.5)');
 
-  // Audio
-  initAudio();
-  startThemeAudio(state.theme);
+    // Three.js scene
+    startThemeScene(state.theme);
 
-  // Breathing
-  document.getElementById('breath-label').textContent = PATTERNS[state.breathKey].label;
-  startBreathing(state.breathKey);
+    // Audio
+    initAudio();
+    startThemeAudio(state.theme);
 
-  // Timer
-  if (state.minutes > 0) {
-    state.remaining = state.minutes * 60;
-    renderTimer();
-    state.timerId = setInterval(() => {
-      state.remaining--;
+    // Breathing
+    document.getElementById('breath-label').textContent = PATTERNS[state.breathKey].label;
+    startBreathing(state.breathKey);
+
+    // Timer
+    if (state.minutes > 0) {
+      state.remaining = state.minutes * 60;
       renderTimer();
-      if (state.remaining <= 0) {
-        clearInterval(state.timerId);
-        state.timerId = null;
-        playBell();
-        logSession(state.minutes);
-        setTimeout(() => showCompletion(state.minutes), 1200);
-      }
-    }, 1000);
-  } else {
-    document.getElementById('timer-display').textContent = '∞';
-    state.startedAt = Date.now();
-  }
+      state.timerId = setInterval(() => {
+        state.remaining--;
+        renderTimer();
+        if (state.remaining <= 0) {
+          clearInterval(state.timerId);
+          state.timerId = null;
+          playBell();
+          logSession(state.minutes);
+          setTimeout(() => showCompletion(state.minutes), 1200);
+        }
+      }, 1000);
+    } else {
+      document.getElementById('timer-display').textContent = '∞';
+      state.startedAt = Date.now();
+    }
+
+    // Start control auto-hide
+    document.getElementById('session-screen').addEventListener('pointerdown', showSessionControls, { passive: true });
+    showSessionControls();
+
+    setTimeout(() => veil.classList.remove('active'), 80);
+  }, 650);
 }
 
 function showCompletion(sessionMinutes) {
@@ -291,26 +325,38 @@ function showCompletion(sessionMinutes) {
 }
 
 function endSession() {
-  // Log elapsed minutes before clearing state
-  const elapsed = state.minutes > 0
-    ? state.minutes - Math.floor(state.remaining / 60)
-    : Math.floor((Date.now() - (state.startedAt || Date.now())) / 60000);
-  if (elapsed >= 1) logSession(elapsed);
+  const veil = document.getElementById('transition-veil');
+  veil.classList.add('active');
 
-  document.getElementById('session-screen').classList.add('hidden');
-  document.getElementById('home-screen').classList.remove('hidden');
-  document.getElementById('completion').classList.remove('visible');
+  // Clean up auto-hide
+  clearTimeout(fadeTimer);
+  document.getElementById('session-screen').removeEventListener('pointerdown', showSessionControls);
+  document.getElementById('session-controls')?.classList.remove('faded');
 
-  stopScene();
-  stopAudio();
-  stopBreathing();
+  setTimeout(() => {
+    // Log elapsed minutes before clearing state
+    const elapsed = state.minutes > 0
+      ? state.minutes - Math.floor(state.remaining / 60)
+      : Math.floor((Date.now() - (state.startedAt || Date.now())) / 60000);
+    if (elapsed >= 1) logSession(elapsed);
 
-  if (state.timerId) {
-    clearInterval(state.timerId);
-    state.timerId = null;
-  }
+    document.getElementById('session-screen').classList.add('hidden');
+    document.getElementById('home-screen').classList.remove('hidden');
+    document.getElementById('completion').classList.remove('visible');
 
-  renderHomeStats();
+    stopScene();
+    stopAudio();
+    stopBreathing();
+
+    if (state.timerId) {
+      clearInterval(state.timerId);
+      state.timerId = null;
+    }
+
+    renderHomeStats();
+
+    setTimeout(() => veil.classList.remove('active'), 80);
+  }, 550);
 }
 
 function renderTimer() {

@@ -343,12 +343,18 @@ html, body {
   letter-spacing: 0.2em;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.25s, box-shadow 0.25s;
+  transition: background 0.25s, box-shadow 0.25s, transform 0.12s;
 }
 
 .start-btn:hover {
   background: rgba(255,255,255,0.07);
   box-shadow: 0 0 28px rgba(255,255,255,0.08);
+}
+
+.start-btn:active {
+  transform: scale(0.96);
+  background: rgba(255,255,255,0.12);
+  box-shadow: 0 0 50px rgba(255,255,255,0.18);
 }
 
 /* Version badge */
@@ -362,6 +368,21 @@ html, body {
   pointer-events: none;
 }
 
+/* ── Transition veil ──────────────────────────────────────────────────────── */
+#transition-veil {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.7s ease;
+  z-index: 200;
+}
+#transition-veil.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
 /* ── Session ──────────────────────────────────────────────────────────────── */
 #session-screen { background: #000; }
 
@@ -373,11 +394,35 @@ html, body {
   display: block;
 }
 
+/* Vignette: 周辺暗化で没入感を高める */
+#session-vignette {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 55%, transparent 28%, rgba(0,0,0,0.65) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
 #ui-overlay {
   position: fixed;
   inset: 0;
   pointer-events: none;
+  z-index: 2;
 }
+
+/* Session peripheral controls with auto-hide */
+#session-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 1.6s ease;
+}
+#session-controls.faded {
+  opacity: 0;
+  pointer-events: none;
+}
+#session-controls.faded #back-btn,
+#session-controls.faded #vol-ctrl { pointer-events: none; }
 
 /* Back */
 #back-btn {
@@ -484,14 +529,14 @@ html, body {
 
 #ring-outer {
   position: relative;
-  width: 210px;
-  height: 210px;
+  width: 290px;
+  height: 290px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Subtle outer ring */
+/* Outer ring 1: ゆっくり脈動 */
 #ring-outer::before {
   content: '';
   position: absolute;
@@ -501,45 +546,58 @@ html, body {
   animation: outerPulse 6s ease-in-out infinite;
 }
 
+/* Outer ring 2: テーマカラー、位相をずらして奥行き感 */
+#ring-outer::after {
+  content: '';
+  position: absolute;
+  inset: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--theme-glow, rgba(68,170,255,0.2));
+  animation: outerPulse 6s ease-in-out infinite 3s;
+}
+
 @keyframes outerPulse {
-  0%, 100% { transform: scale(1);    opacity: 0.3; }
-  50%       { transform: scale(1.12); opacity: 0.12; }
+  0%, 100% { transform: scale(1);    opacity: 0.35; }
+  50%       { transform: scale(1.1);  opacity: 0.12; }
 }
 
 #breathing-circle {
-  width: 120px;
-  height: 120px;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 65%, transparent 100%);
-  border: 1px solid rgba(255,255,255,0.28);
-  box-shadow: 0 0 40px var(--theme-glow, rgba(68,170,255,0.20));
+  background: radial-gradient(circle, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 60%, transparent 100%);
+  border: 1px solid rgba(255,255,255,0.45);
+  box-shadow:
+    0 0 55px var(--theme-glow-strong, rgba(68,170,255,0.5)),
+    0 0 120px var(--theme-glow, rgba(68,170,255,0.22)),
+    inset 0 0 40px rgba(255,255,255,0.05);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
+  gap: 0.2rem;
   transform-origin: center;
   will-change: transform;
 }
 
 #breath-phase {
-  font-size: 0.78rem;
-  letter-spacing: 0.22em;
-  color: rgba(255,255,255,0.75);
+  font-size: 0.8rem;
+  letter-spacing: 0.26em;
+  color: rgba(255,255,255,0.8);
 }
 
 #breath-count {
-  font-size: 1.9rem;
+  font-size: 2.4rem;
   font-weight: 200;
-  color: rgba(255,255,255,0.92);
+  color: rgba(255,255,255,0.95);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 #breath-label {
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
-  color: rgba(255,255,255,0.28);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.32);
 }
 
 /* ── Completion ───────────────────────────────────────────────────────────── */
@@ -547,6 +605,7 @@ html, body {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.82);
+  z-index: 5;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   display: flex;
