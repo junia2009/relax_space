@@ -2,9 +2,10 @@ import './style.css';
 import { initScene, startThemeScene, stopScene } from './scenes.js';
 import { initAudio, startThemeAudio, stopAudio, playBell, setVolume } from './audio.js';
 import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breathing.js';
+import { ACHIEVEMENTS, loadUnlocked, recordTheme, checkAchievements } from './achievements.js';
 
 // ── Version ────────────────────────────────────────────────────────────────
-const VERSION = 'v1.3.0';
+const VERSION = 'v1.4.0';
 
 // ── App state ──────────────────────────────────────────────────────────────
 const state = {
@@ -99,6 +100,7 @@ document.querySelector('#app').innerHTML = `
       <h1 class="app-title">静かな時間を</h1>
       <p class="app-desc">音・呼吸・映像で、数分間だけ<br>頭を手放す場所。</p>
       <p class="home-stats" id="home-stats"></p>
+      <div id="home-achievements"></div>
 
       <div class="themes-grid">
         <div class="theme-card selected" data-theme="ocean">
@@ -179,6 +181,7 @@ document.querySelector('#app').innerHTML = `
       <p class="cmp-sub" id="cmp-sub">セッションが完了しました</p>
       <p class="cmp-stats" id="cmp-stats"></p>
       <p class="cmp-habit" id="cmp-habit"></p>
+      <div id="cmp-achievements"></div>
       <button class="cmp-btn" id="cmp-back">ホームに戻る</button>
     </div>
   </div>
@@ -225,6 +228,7 @@ document.querySelectorAll('#breath-opts .opt-btn').forEach(btn => {
 
 // ── Home stats on load ─────────────────────────────────────────────────────
 renderHomeStats();
+renderHomeAchievements();
 
 // ── Control auto-hide ──────────────────────────────────────────────────────
 let fadeTimer = null;
@@ -274,6 +278,9 @@ function startSession() {
     document.documentElement.style.setProperty('--theme-glow', THEME_GLOW[state.theme] ?? 'rgba(255,255,255,0.12)');
     document.documentElement.style.setProperty('--theme-glow-strong', THEME_GLOW_STRONG[state.theme] ?? 'rgba(255,255,255,0.5)');
 
+    // Record theme for achievements
+    recordTheme(state.theme);
+
     // Three.js scene
     startThemeScene(state.theme);
 
@@ -314,14 +321,59 @@ function startSession() {
 }
 
 function showCompletion(sessionMinutes) {
-  const log = loadLog();
+  const log    = loadLog();
   const todayMin = log[dateKey()] || 0;
   const streak = getStreak(log);
 
   document.getElementById('cmp-stats').textContent =
     `今日 ${todayMin}分 · 連続 ${streak}日`;
   document.getElementById('cmp-habit').textContent = habitMessage(streak);
+
+  // Achievement check
+  const { newlyUnlocked, unlockedCount, total } = checkAchievements(log, streak);
+  renderCompletionAchievements(newlyUnlocked);
+  renderHomeAchievements();
+
   document.getElementById('completion').classList.add('visible');
+}
+
+function renderCompletionAchievements(list) {
+  const el = document.getElementById('cmp-achievements');
+  if (!el) return;
+  el.innerHTML = '';
+  if (list.length === 0) return;
+
+  list.forEach((ach, i) => {
+    const card = document.createElement('div');
+    card.className = 'ach-unlock';
+    card.style.animationDelay = `${i * 0.18}s`;
+    card.innerHTML = `
+      <span class="ach-new">NEW</span>
+      <span class="ach-icon">${ach.icon}</span>
+      <span class="ach-info">
+        <span class="ach-name">${ach.name}</span>
+        <span class="ach-desc">${ach.desc}</span>
+      </span>`;
+    el.appendChild(card);
+  });
+}
+
+function renderHomeAchievements() {
+  const el = document.getElementById('home-achievements');
+  if (!el) return;
+  const unlocked = loadUnlocked();
+  if (unlocked.length === 0) { el.innerHTML = ''; return; }
+
+  const icons = ACHIEVEMENTS
+    .filter(a => unlocked.includes(a.id))
+    .map(a => `<span title="${a.name}">${a.icon}</span>`)
+    .join('');
+
+  el.innerHTML = `
+    <div class="home-ach">
+      <span class="home-ach-icons">${icons}</span>
+      <span class="home-ach-count">${unlocked.length} / ${ACHIEVEMENTS.length}</span>
+    </div>`;
 }
 
 function endSession() {
@@ -354,6 +406,7 @@ function endSession() {
     }
 
     renderHomeStats();
+    renderHomeAchievements();
 
     setTimeout(() => veil.classList.remove('active'), 80);
   }, 550);
