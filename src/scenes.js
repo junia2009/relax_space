@@ -197,16 +197,34 @@ function buildSpace() {
   scene.add(new THREE.AmbientLight(0x0f0c2e, 0.9));
   addLight(0x5533ff, 1.2, 0, 0, 8, 60);
 
-  // Star field
+  // Streaming star field — stars fly toward camera along Z, reset when passed
   const SC = 2500;
-  const { pts: starPts, geo: sGeo, mat: sMat } = particleSystem(SC, { x: 120, y: 120, z: 80 }, 0xffffff, 0.13);
-  const sPos = sGeo.attributes.position.array;
-  for (let i = 0; i < SC; i++) sPos[i * 3 + 2] = -10 - Math.random() * 110;
-  sGeo.attributes.position.needsUpdate = true;
+  const sArr = new Float32Array(SC * 3);
+  const sSpeeds = new Float32Array(SC);
+  const resetStar = i => {
+    sArr[i * 3]     = (Math.random() - 0.5) * 120;
+    sArr[i * 3 + 1] = (Math.random() - 0.5) * 120;
+    sArr[i * 3 + 2] = -10 - Math.random() * 140;
+    sSpeeds[i] = 0.025 + Math.random() * 0.065;
+  };
+  for (let i = 0; i < SC; i++) resetStar(i);
+
+  const sGeo = new THREE.BufferGeometry();
+  sGeo.setAttribute('position', new THREE.BufferAttribute(sArr, 3));
+  const sMat = new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.13, transparent: true, opacity: 0.88,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const starPts = new THREE.Points(sGeo, sMat);
+  starPts.frustumCulled = false;
+  scene.add(starPts);
 
   updaters.push(t => {
-    starPts.rotation.y = t * 0.008;
-    starPts.rotation.x = t * 0.003;
+    for (let i = 0; i < SC; i++) {
+      sArr[i * 3 + 2] += sSpeeds[i];
+      if (sArr[i * 3 + 2] > 18) resetStar(i);
+    }
+    sGeo.attributes.position.needsUpdate = true;
     sMat.opacity = 0.88 + Math.sin(t * 0.4) * 0.12;
   });
 
@@ -224,7 +242,7 @@ function buildSpace() {
     });
   });
 
-  // Bright twinkling stars
+  // Bright twinkling stars (stationary, close)
   for (let i = 0; i < 8; i++) {
     const geo = new THREE.SphereGeometry(0.08, 6, 6);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true });
