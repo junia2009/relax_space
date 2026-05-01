@@ -126,16 +126,24 @@ html, body {
   white-space: nowrap;
 }
 
-/* Theme grid */
-.themes-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+/* Theme carousel */
+.theme-carousel-wrap {
   width: 100%;
+  overflow: hidden;
+  padding: 8px 0 4px;
+}
+
+.theme-carousel {
+  position: relative;
+  height: 132px;
+  perspective: 700px;
 }
 
 .theme-card {
-  position: relative;
+  position: absolute;
+  width: 160px;
+  height: 100%;
+  left: calc(50% - 80px);
   overflow: hidden;
   padding: 1.25rem 1rem;
   border-radius: 0.9rem;
@@ -143,18 +151,39 @@ html, body {
   cursor: pointer;
   text-align: center;
   touch-action: manipulation;
-  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+  transition: transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94),
+              opacity 0.42s ease,
+              border-color 0.25s,
+              box-shadow 0.3s;
   -webkit-user-select: none;
   user-select: none;
+  will-change: transform, opacity;
+}
+
+.theme-card[data-pos="active"] {
+  transform: translateZ(20px) rotateY(0deg);
+  opacity: 1;
+  z-index: 3;
+}
+.theme-card[data-pos="right"] {
+  transform: translateX(155px) translateZ(-20px) rotateY(-52deg);
+  opacity: 0.58;
+  z-index: 2;
+}
+.theme-card[data-pos="left"] {
+  transform: translateX(-155px) translateZ(-20px) rotateY(52deg);
+  opacity: 0.58;
+  z-index: 2;
+}
+.theme-card[data-pos="back"] {
+  transform: translateZ(-60px) scale(0.65);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 
 /* カード内コンテンツをアニメーション疑似要素の上に確保 */
 .theme-emoji, .theme-name, .theme-desc { position: relative; z-index: 1; }
-
-.theme-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255,255,255,0.22);
-}
 
 .theme-card.selected {
   border-color: rgba(255,255,255,0.55);
@@ -297,16 +326,38 @@ html, body {
 .theme-name  { font-size: 1rem; font-weight: 400; color: rgba(255,255,255,0.88); }
 .theme-desc  { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-top: 0.2rem; }
 
+/* Carousel dots */
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.carousel-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  transition: background 0.3s, transform 0.3s;
+  cursor: pointer;
+}
+.carousel-dot.active {
+  background: rgba(255,255,255,0.8);
+  transform: scale(1.35);
+}
+
 @media (max-height: 700px) {
-  .theme-card  { padding: 0.85rem 0.75rem; }
-  .theme-emoji { font-size: 1.35rem; margin-bottom: 0.25rem; }
+  .theme-carousel { height: 115px; }
+  .theme-card     { padding: 0.85rem 0.75rem; }
+  .theme-emoji    { font-size: 1.35rem; margin-bottom: 0.25rem; }
 }
 
 @media (max-height: 580px) {
-  .theme-card  { padding: 0.6rem 0.6rem; }
-  .theme-emoji { font-size: 1.1rem; margin-bottom: 0.15rem; }
-  .theme-desc  { display: none; }
-  .start-btn   { padding: 0.7rem 2.5rem; }
+  .theme-carousel { height: 98px; }
+  .theme-card     { padding: 0.6rem 0.6rem; }
+  .theme-emoji    { font-size: 1.1rem; margin-bottom: 0.15rem; }
+  .theme-desc     { display: none; }
+  .start-btn      { padding: 0.7rem 2.5rem; }
 }
 
 /* Settings row */

@@ -5,7 +5,7 @@ import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breath
 import { ACHIEVEMENTS, loadUnlocked, recordTheme, checkAchievements } from './achievements.js';
 
 // ── Version ────────────────────────────────────────────────────────────────
-const VERSION = 'v1.5.2';
+const VERSION = 'v1.5.3';
 
 // ── App state ──────────────────────────────────────────────────────────────
 const state = {
@@ -102,26 +102,34 @@ document.querySelector('#app').innerHTML = `
       <p class="home-stats" id="home-stats"></p>
       <div id="home-achievements"></div>
 
-      <div class="themes-grid">
-        <div class="theme-card selected" data-theme="ocean">
-          <div class="theme-emoji">🌊</div>
-          <div class="theme-name">深海</div>
-          <div class="theme-desc">静かな海の底で</div>
+      <div class="theme-carousel-wrap">
+        <div class="theme-carousel" id="theme-carousel">
+          <div class="theme-card selected" data-theme="ocean" data-pos="active">
+            <div class="theme-emoji">🌊</div>
+            <div class="theme-name">深海</div>
+            <div class="theme-desc">静かな海の底で</div>
+          </div>
+          <div class="theme-card" data-theme="forest" data-pos="right">
+            <div class="theme-emoji">🌿</div>
+            <div class="theme-name">森</div>
+            <div class="theme-desc">夜の森の静寂に</div>
+          </div>
+          <div class="theme-card" data-theme="space" data-pos="back">
+            <div class="theme-emoji">✨</div>
+            <div class="theme-name">宇宙</div>
+            <div class="theme-desc">星空の彼方へ</div>
+          </div>
+          <div class="theme-card" data-theme="fire" data-pos="left">
+            <div class="theme-emoji">🔥</div>
+            <div class="theme-name">焚き火</div>
+            <div class="theme-desc">炎の温もりの中で</div>
+          </div>
         </div>
-        <div class="theme-card" data-theme="forest">
-          <div class="theme-emoji">🌿</div>
-          <div class="theme-name">森</div>
-          <div class="theme-desc">夜の森の静寂に</div>
-        </div>
-        <div class="theme-card" data-theme="space">
-          <div class="theme-emoji">✨</div>
-          <div class="theme-name">宇宙</div>
-          <div class="theme-desc">星空の彼方へ</div>
-        </div>
-        <div class="theme-card" data-theme="fire">
-          <div class="theme-emoji">🔥</div>
-          <div class="theme-name">焚き火</div>
-          <div class="theme-desc">炎の温もりの中で</div>
+        <div class="carousel-dots" id="carousel-dots">
+          <span class="carousel-dot active"></span>
+          <span class="carousel-dot"></span>
+          <span class="carousel-dot"></span>
+          <span class="carousel-dot"></span>
         </div>
       </div>
 
@@ -209,13 +217,41 @@ initBreathing(
   document.getElementById('breath-count'),
 );
 
-// ── Theme selection ────────────────────────────────────────────────────────
-document.querySelectorAll('.theme-card').forEach(card => {
-  card.addEventListener('click', () => {
-    document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
-    card.classList.add('selected');
-    state.theme = card.dataset.theme;
+// ── Theme carousel ─────────────────────────────────────────────────────────
+const THEMES = ['ocean', 'forest', 'space', 'fire'];
+const CAROUSEL_POS = ['active', 'right', 'back', 'left'];
+let carouselIdx = 0;
+
+function updateCarousel() {
+  const n = THEMES.length;
+  document.querySelectorAll('.theme-card').forEach((card, i) => {
+    const rel = (i - carouselIdx + n) % n;
+    card.dataset.pos = CAROUSEL_POS[rel];
+    card.classList.toggle('selected', rel === 0);
   });
+  document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+    dot.classList.toggle('active', i === carouselIdx);
+  });
+  state.theme = THEMES[carouselIdx];
+}
+
+function carouselNext() { carouselIdx = (carouselIdx + 1) % THEMES.length; updateCarousel(); }
+function carouselPrev() { carouselIdx = (carouselIdx - 1 + THEMES.length) % THEMES.length; updateCarousel(); }
+
+let _tsX = 0, _didSwipe = false;
+const carouselEl = document.getElementById('theme-carousel');
+carouselEl.addEventListener('touchstart', e => { _tsX = e.touches[0].clientX; _didSwipe = false; }, { passive: true });
+carouselEl.addEventListener('touchend',   e => {
+  const dx = e.changedTouches[0].clientX - _tsX;
+  if (Math.abs(dx) > 40) { _didSwipe = true; dx < 0 ? carouselNext() : carouselPrev(); }
+}, { passive: true });
+carouselEl.addEventListener('click', e => {
+  if (_didSwipe) { _didSwipe = false; return; }
+  const card = e.target.closest('.theme-card');
+  if (!card) return;
+  const pos = card.dataset.pos;
+  if (pos === 'right') carouselNext();
+  else if (pos === 'left') carouselPrev();
 });
 
 // ── Settings bottom sheet ──────────────────────────────────────────────────
