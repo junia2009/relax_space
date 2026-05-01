@@ -46,7 +46,7 @@ html, body {
 
 /* ── Home ─────────────────────────────────────────────────────────────────── */
 #home-screen {
-  background: radial-gradient(ellipse at 50% 60%, #080d18 0%, #000 75%);
+  background: radial-gradient(ellipse at 50% 55%, #0e1f3a 0%, #060c18 80%);
 }
 
 .home-inner {
@@ -61,7 +61,7 @@ html, body {
 .app-kicker {
   font-size: 0.7rem;
   letter-spacing: 0.35em;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.52);
   text-transform: uppercase;
 }
 
@@ -82,7 +82,7 @@ html, body {
 
 .app-desc {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.38);
+  color: rgba(255,255,255,0.58);
   letter-spacing: 0.06em;
   line-height: 1.8;
   text-align: center;
@@ -93,12 +93,12 @@ html, body {
   display: none;
   font-size: 0.72rem;
   letter-spacing: 0.14em;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255,255,255,0.62);
   text-align: center;
   padding: 0.3rem 1rem;
   border-radius: 2rem;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.07);
 }
 
 /* Home achievements */
@@ -108,8 +108,8 @@ html, body {
   gap: 0.6rem;
   padding: 0.3rem 0.9rem;
   border-radius: 2rem;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
 }
 
 .home-ach-icons {
@@ -122,7 +122,7 @@ html, body {
 .home-ach-count {
   font-size: 0.65rem;
   letter-spacing: 0.14em;
-  color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.48);
   white-space: nowrap;
 }
 
