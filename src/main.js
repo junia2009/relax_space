@@ -1,6 +1,6 @@
 import './style.css';
 import { initScene, startThemeScene, stopScene } from './scenes.js';
-import { initAudio, startThemeAudio, stopAudio, playBell } from './audio.js';
+import { initAudio, startThemeAudio, stopAudio, playBell, setVolume } from './audio.js';
 import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breathing.js';
 
 // ── App state ──────────────────────────────────────────────────────────────
@@ -11,6 +11,59 @@ const state = {
   remaining: 0,
   timerId:  null,
 };
+
+// ── Volume state ───────────────────────────────────────────────────────────
+const vol = { level: 1, muted: false };
+
+// ── Retention / habit log ──────────────────────────────────────────────────
+const LOG_KEY = 'relax_space_log';
+
+function dateKey(d = new Date()) {
+  return d.toISOString().split('T')[0];
+}
+
+function loadLog() {
+  try { return JSON.parse(localStorage.getItem(LOG_KEY) || '{}'); } catch { return {}; }
+}
+
+function logSession(minutes) {
+  if (minutes < 1) return;
+  const log = loadLog();
+  const k = dateKey();
+  log[k] = (log[k] || 0) + minutes;
+  localStorage.setItem(LOG_KEY, JSON.stringify(log));
+}
+
+function getStreak(log) {
+  let streak = 0;
+  const d = new Date();
+  while (true) {
+    if (log[dateKey(d)]) { streak++; d.setDate(d.getDate() - 1); }
+    else break;
+  }
+  return streak;
+}
+
+function habitMessage(streak) {
+  if (streak >= 30) return '1ヶ月間、毎日続けています。すごい！';
+  if (streak >= 14) return '2週間連続。習慣が定着してきました。';
+  if (streak >= 7)  return '1週間連続！ 素晴らしいペースです。';
+  if (streak >= 3)  return '3日連続。いいリズムが生まれています。';
+  if (streak >= 1)  return '今日もリラックスできました。';
+  return 'また来てね。';
+}
+
+function renderHomeStats() {
+  const log = loadLog();
+  const todayMin = log[dateKey()] || 0;
+  const streak = getStreak(log);
+  const el = document.getElementById('home-stats');
+  if (!el) return;
+  if (todayMin > 0 || streak > 0) {
+    el.textContent = `今日 ${todayMin}分 · 連続 ${streak}日`;
+    el.style.display = 'block';
+  }
+}
 
 // ── Theme accent colors ────────────────────────────────────────────────────
 const THEME_COLORS = {
@@ -28,6 +81,7 @@ document.querySelector('#app').innerHTML = `
       <p class="app-kicker">Relax Space</p>
       <h1 class="app-title">静かな時間を</h1>
       <p class="app-desc">音・呼吸・映像で、数分間だけ<br>頭を手放す場所。</p>
+      <p class="home-stats" id="home-stats"></p>
 
       <div class="themes-grid">
         <div class="theme-card selected" data-theme="ocean">
@@ -83,6 +137,10 @@ document.querySelector('#app').innerHTML = `
     <div id="ui-overlay">
       <button id="back-btn">← 戻る</button>
       <div id="timer-display"></div>
+      <div id="vol-ctrl">
+        <button id="mute-btn" aria-label="ミュート">🔊</button>
+        <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="1" aria-label="音量">
+      </div>
 
       <div id="breathing-wrap">
         <div id="ring-outer">
@@ -97,7 +155,9 @@ document.querySelector('#app').innerHTML = `
 
     <div id="completion">
       <p class="cmp-title">お疲れ様でした</p>
-      <p class="cmp-sub">セッションが完了しました</p>
+      <p class="cmp-sub" id="cmp-sub">セッションが完了しました</p>
+      <p class="cmp-stats" id="cmp-stats"></p>
+      <p class="cmp-habit" id="cmp-habit"></p>
       <button class="cmp-btn" id="cmp-back">ホームに戻る</button>
     </div>
   </div>
@@ -140,15 +200,37 @@ document.querySelectorAll('#breath-opts .opt-btn').forEach(btn => {
   });
 });
 
+// ── Home stats on load ─────────────────────────────────────────────────────
+renderHomeStats();
+
 // ── Start / End ────────────────────────────────────────────────────────────
 document.getElementById('start-btn').addEventListener('click', startSession);
 document.getElementById('back-btn').addEventListener('click', endSession);
 document.getElementById('cmp-back').addEventListener('click', endSession);
 
+// ── Volume control ─────────────────────────────────────────────────────────
+document.getElementById('mute-btn').addEventListener('click', () => {
+  vol.muted = !vol.muted;
+  document.getElementById('mute-btn').textContent = vol.muted ? '🔇' : '🔊';
+  setVolume(vol.muted ? 0 : vol.level);
+});
+
+document.getElementById('vol-slider').addEventListener('input', e => {
+  vol.level = parseFloat(e.target.value);
+  if (!vol.muted) setVolume(vol.level);
+  document.getElementById('mute-btn').textContent = vol.level === 0 ? '🔇' : '🔊';
+});
+
 function startSession() {
   document.getElementById('home-screen').classList.add('hidden');
   document.getElementById('session-screen').classList.remove('hidden');
   document.getElementById('completion').classList.remove('visible');
+
+  // Reset volume UI
+  vol.muted = false;
+  vol.level = 1;
+  document.getElementById('mute-btn').textContent = '🔊';
+  document.getElementById('vol-slider').value = 1;
 
   // Theme accent color
   document.documentElement.style.setProperty('--theme', THEME_COLORS[state.theme] ?? '#ffffff');
@@ -175,15 +257,34 @@ function startSession() {
         clearInterval(state.timerId);
         state.timerId = null;
         playBell();
-        setTimeout(() => document.getElementById('completion').classList.add('visible'), 1200);
+        logSession(state.minutes);
+        setTimeout(() => showCompletion(state.minutes), 1200);
       }
     }, 1000);
   } else {
     document.getElementById('timer-display').textContent = '∞';
+    state.startedAt = Date.now();
   }
 }
 
+function showCompletion(sessionMinutes) {
+  const log = loadLog();
+  const todayMin = log[dateKey()] || 0;
+  const streak = getStreak(log);
+
+  document.getElementById('cmp-stats').textContent =
+    `今日 ${todayMin}分 · 連続 ${streak}日`;
+  document.getElementById('cmp-habit').textContent = habitMessage(streak);
+  document.getElementById('completion').classList.add('visible');
+}
+
 function endSession() {
+  // Log elapsed minutes before clearing state
+  const elapsed = state.minutes > 0
+    ? state.minutes - Math.floor(state.remaining / 60)
+    : Math.floor((Date.now() - (state.startedAt || Date.now())) / 60000);
+  if (elapsed >= 1) logSession(elapsed);
+
   document.getElementById('session-screen').classList.add('hidden');
   document.getElementById('home-screen').classList.remove('hidden');
   document.getElementById('completion').classList.remove('visible');
@@ -196,6 +297,8 @@ function endSession() {
     clearInterval(state.timerId);
     state.timerId = null;
   }
+
+  renderHomeStats();
 }
 
 function renderTimer() {

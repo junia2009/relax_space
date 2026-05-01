@@ -26,6 +26,12 @@ export function initAudio() {
 }
 export function getAudioContext() { return audioCtx; }
 
+export function setVolume(v) {
+  if (masterGain && audioCtx) {
+    masterGain.gain.setTargetAtTime(v * 0.55, audioCtx.currentTime, 0.1);
+  }
+}
+
 export function stopAudio() {
   currentGeneration++;
   activeSources.forEach(n => { try { n.stop(); } catch (_) {} });
