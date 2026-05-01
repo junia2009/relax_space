@@ -173,11 +173,37 @@ function drawIcon(size) {
   return buf;
 }
 
-// ── Generate both sizes ────────────────────────────────────────────────────
+// ── Apple touch icon (180×180, full square, no transparency) ──────────────
+function drawAppleIcon(size) {
+  const buf = drawIcon(size);
+  // Replace transparent pixels with the dark background colour (#00050e)
+  for (let i = 0; i < size * size; i++) {
+    const idx = i * 4;
+    if (buf[idx + 3] < 255) {
+      const alpha = buf[idx + 3] / 255;
+      buf[idx]     = Math.round(buf[idx]     * alpha);
+      buf[idx + 1] = Math.round(buf[idx + 1] * alpha);
+      buf[idx + 2] = Math.round(buf[idx + 2] * alpha + 14 * (1 - alpha));
+      buf[idx + 3] = 255;
+    }
+  }
+  return buf;
+}
+
+// ── Generate all sizes ─────────────────────────────────────────────────────
 for (const size of [192, 512]) {
   const pixels = drawIcon(size);
   const png    = encodePNG(pixels, size, size);
   const out    = join(OUT, `icon-${size}.png`);
+  writeFileSync(out, png);
+  console.log(`✓ ${out}  (${png.length} bytes)`);
+}
+
+// Apple touch icon: 180×180, full square (no circular clip)
+{
+  const pixels = drawAppleIcon(180);
+  const png    = encodePNG(pixels, 180, 180);
+  const out    = join(OUT, 'apple-touch-icon.png');
   writeFileSync(out, png);
   console.log(`✓ ${out}  (${png.length} bytes)`);
 }
