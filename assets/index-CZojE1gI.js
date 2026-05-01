@@ -4107,7 +4107,6 @@ void main() {
     <div class="home-inner">
       <p class="app-kicker">Relax Space</p>
       <h1 class="app-title">静かな時間を</h1>
-      <p class="app-version">${Pl}</p>
       <p class="app-desc">音・呼吸・映像で、数分間だけ<br>頭を手放す場所。</p>
       <p class="home-stats" id="home-stats"></p>
 
