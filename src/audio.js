@@ -188,36 +188,43 @@ function startForest(ctx, dest, gen) {
   binauralBeat(ctx, dest, 220, 10, 0.025);
 
   // 小鳥の囀り: 純正律比の短いサイン波フレーズ。2種の鳴き方をランダムに使用
+  // 人間の耳が最も敏感な3〜4kHz帯を避け、各音にわずかなピッチの「すべり」を
+  // つけることで、静的なビープ音ではなく自然な鳴き声に近づける
   function chirpPhrase(t0, intervals, base) {
     intervals.forEach(([dt, ratio]) => {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
+      const lp = ctx.createBiquadFilter();
       const panner = ctx.createStereoPanner();
       const t = t0 + dt;
-      o.frequency.value = base * ratio;
+      const freq = base * ratio;
+      o.frequency.setValueAtTime(freq * 0.92, t);
+      o.frequency.linearRampToValueAtTime(freq, t + 0.05);
+      o.frequency.linearRampToValueAtTime(freq * 0.97, t + 0.22);
+      lp.type = 'lowpass'; lp.frequency.value = 3200;
       panner.pan.value = (Math.random() - 0.5) * 1.6;
       g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.03, t + 0.04);
+      g.gain.linearRampToValueAtTime(0.02, t + 0.05);
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
-      o.connect(g); g.connect(panner); panner.connect(dest);
+      o.connect(lp); lp.connect(g); g.connect(panner); panner.connect(dest);
       o.start(t); o.stop(t + 0.28);
     });
   }
   function scheduleBird() {
     if (!isAlive(gen)) return;
     schedule(gen, () => {
-      const base = 1760 + Math.random() * 880;
+      const base = 1300 + Math.random() * 600; // 1300–1900 Hz: 鋭すぎない囀りの帯域
       const t0 = ctx.currentTime;
       if (Math.random() < 0.5) {
         // さえずり: 上昇フレーズ
-        chirpPhrase(t0, [[0, 1], [0.18, 1.25], [0.38, 1.5], [0.56, 1]], base);
+        chirpPhrase(t0, [[0, 1], [0.18, 1.25], [0.38, 1.4], [0.56, 1]], base);
       } else {
         // 短い呼び鳴き: 2音の繰り返し
-        chirpPhrase(t0, [[0, 1], [0.2, 1.5]], base);
-        chirpPhrase(t0, [[0.55, 1], [0.75, 1.5]], base * 1.06);
+        chirpPhrase(t0, [[0, 1], [0.2, 1.4]], base);
+        chirpPhrase(t0, [[0.55, 1], [0.75, 1.4]], base * 1.06);
       }
       scheduleBird();
-    }, (4 + Math.random() * 8) * 1000);
+    }, (5 + Math.random() * 10) * 1000);
   }
   scheduleBird();
 }
@@ -244,24 +251,28 @@ function startSpace(ctx, dest, gen) {
     track(osc); track(modOsc);
   });
 
-  // 星のきらめき: 連続ノイズではなく、ランダムな間隔で鳴る短いベル状のピン音
+  // 星のきらめき: 連続ノイズではなく、まばらに鳴る短いベル状のピン音。
+  // 3〜4kHzの耳が最も敏感な帯域は避け、間隔も空けて「重なって鳴り続ける」
+  // ことを防ぐ(でないと高音の塊がノイズのように聞こえてしまう)
   function scheduleTwinkle() {
     if (!isAlive(gen)) return;
     schedule(gen, () => {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
+      const lp = ctx.createBiquadFilter();
       const panner = ctx.createStereoPanner();
       const t = ctx.currentTime;
       o.type = 'sine';
-      o.frequency.value = 2400 + Math.random() * 3600;
+      o.frequency.value = 1500 + Math.random() * 2000; // 1500–3500 Hz
+      lp.type = 'lowpass'; lp.frequency.value = 4000;
       panner.pan.value = (Math.random() - 0.5) * 1.8;
       g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.02, t + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
-      o.connect(g); g.connect(panner); panner.connect(dest);
-      o.start(t); o.stop(t + 1.3);
+      g.gain.linearRampToValueAtTime(0.012, t + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+      o.connect(lp); lp.connect(g); g.connect(panner); panner.connect(dest);
+      o.start(t); o.stop(t + 0.8);
       scheduleTwinkle();
-    }, (1 + Math.random() * 3.5) * 1000);
+    }, (4 + Math.random() * 6) * 1000);
   }
   scheduleTwinkle();
 
