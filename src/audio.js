@@ -131,7 +131,7 @@ function startOcean(ctx, dest, gen) {
   bp.type = 'bandpass'; bp.frequency.value = 300; bp.Q.value = 0.6;
   const lp = ctx.createBiquadFilter();
   lp.type = 'lowpass'; lp.frequency.value = 900;
-  const waveG = ctx.createGain(); waveG.gain.value = 0.04;
+  const waveG = ctx.createGain(); waveG.gain.value = 0.0001;
   src.connect(bp); bp.connect(lp); lp.connect(waveG); waveG.connect(dest);
   src.start(); track(src);
 
@@ -144,7 +144,8 @@ function startOcean(ctx, dest, gen) {
     waveG.gain.cancelScheduledValues(t0);
     waveG.gain.setValueAtTime(waveG.gain.value, t0);
     waveG.gain.linearRampToValueAtTime(peak, t0 + rise);
-    waveG.gain.exponentialRampToValueAtTime(0.035, t0 + rise + fall);
+    // 波が完全に引き切るまで減衰させ、合間は無音に近づける(ノイズが残らないように)
+    waveG.gain.exponentialRampToValueAtTime(0.0001, t0 + rise + fall);
     bp.frequency.cancelScheduledValues(t0);
     bp.frequency.setValueAtTime(bp.frequency.value, t0);
     bp.frequency.linearRampToValueAtTime(560, t0 + rise);
@@ -295,20 +296,6 @@ function startFire(ctx, dest, gen) {
     }, (0.25 + Math.random() * 1.6) * 1000);
   }
   crackle();
-
-  // 炉床の低い揺らぎ: ごく低音量のブラウンノイズをゆっくり波打たせる(暖かい息づき)
-  const glowSrc = ctx.createBufferSource();
-  glowSrc.buffer = brownNoiseBuffer(ctx, 4); glowSrc.loop = true;
-  const glowLp = ctx.createBiquadFilter();
-  glowLp.type = 'lowpass'; glowLp.frequency.value = 160;
-  const glowG = ctx.createGain(); glowG.gain.value = 0.05;
-  glowSrc.connect(glowLp); glowLp.connect(glowG); glowG.connect(dest);
-  glowSrc.start(); track(glowSrc);
-  const flickLfo = ctx.createOscillator();
-  const flickG = ctx.createGain();
-  flickLfo.frequency.value = 0.35; flickG.gain.value = 0.025;
-  flickLfo.connect(flickG); flickG.connect(glowG.gain);
-  flickLfo.start(); track(flickLfo);
 
   // バイノーラルビート 6 Hz θ波: 焚き火の前での瞑想状態
   binauralBeat(ctx, dest, 200, 6, 0.03);

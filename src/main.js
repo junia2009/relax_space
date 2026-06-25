@@ -6,7 +6,7 @@ import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breath
 import { ACHIEVEMENTS, loadUnlocked, recordTheme, checkAchievements } from './achievements.js';
 
 // ── Version ────────────────────────────────────────────────────────────────
-const VERSION = 'v1.5.9';
+const VERSION = 'v1.5.10';
 
 // ── PWA 更新チェック ─────────────────────────────────────────────────────
 // installed後はブラウザがSWの更新確認を最大24時間サボることがあるため、
