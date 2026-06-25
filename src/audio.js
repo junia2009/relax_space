@@ -83,17 +83,36 @@ function pinkNoiseBuffer(ctx, seconds = 4) {
   return buf;
 }
 
-function loopPink(ctx, dest, lpFreq, gainVal) {
+// ── ブラウンノイズ生成 (ランダムウォーク積分) ─────────────────────────────
+// -6dB/oct でピンクノイズよりさらに高域が落ち、「ザー」というヒス感が
+// なく深く滑らかな質感になる。波音・風音のベース層に使用。
+function brownNoiseBuffer(ctx, seconds = 4) {
+  const n = ctx.sampleRate * seconds;
+  const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < n; i++) {
+    const w = Math.random() * 2 - 1;
+    last = (last + w * 0.02) / 1.02;
+    d[i] = last * 3.2;
+  }
+  return buf;
+}
+
+// 2段ローパス(カスケード)で-24dB/octの急峻な減衰にし、高域の「ノイズ感」を排除
+function loopAmbientNoise(ctx, dest, lpFreq, gainVal) {
   const src = ctx.createBufferSource();
-  src.buffer = pinkNoiseBuffer(ctx, 4);
+  src.buffer = brownNoiseBuffer(ctx, 4);
   src.loop = true;
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass'; lp.frequency.value = lpFreq; lp.Q.value = 0.5;
+  const lp1 = ctx.createBiquadFilter();
+  lp1.type = 'lowpass'; lp1.frequency.value = lpFreq; lp1.Q.value = 0.4;
+  const lp2 = ctx.createBiquadFilter();
+  lp2.type = 'lowpass'; lp2.frequency.value = lpFreq * 0.85; lp2.Q.value = 0.4;
   const g = ctx.createGain(); g.gain.value = gainVal;
-  src.connect(lp); lp.connect(g); g.connect(dest);
+  src.connect(lp1); lp1.connect(lp2); lp2.connect(g); g.connect(dest);
   src.start();
   track(src);
-  return { src, lp, g };
+  return { src, lp: lp1, lp2, g };
 }
 
 // ── バイノーラルビート ─────────────────────────────────────────────────────
@@ -135,21 +154,21 @@ function justDrone(ctx, dest, root, ratios, gainPerPartial = 0.06) {
 
 // ── Ocean (深海) ──────────────────────────────────────────────────────────
 function startOcean(ctx, dest, gen) {
-  // ピンクノイズ → LP 300 Hz: 深海の静かな環境音
-  const { lp: waveLp } = loopPink(ctx, dest, 300, 0.5);
+  // ブラウンノイズ → LP 220 Hz: 深海の静かでまろやかな環境音
+  const { lp: waveLp } = loopAmbientNoise(ctx, dest, 220, 0.3);
 
   // 波の揺らぎ: 0.08 Hz LFO でカットオフを緩やかに変動
   const lfo = ctx.createOscillator();
   const lfoG = ctx.createGain();
-  lfo.frequency.value = 0.08; lfoG.gain.value = 70;
+  lfo.frequency.value = 0.08; lfoG.gain.value = 50;
   lfo.connect(lfoG); lfoG.connect(waveLp.frequency);
   lfo.start(); track(lfo);
 
-  // 海底の圧力感: さらに低域の pink → LP 80 Hz
-  loopPink(ctx, dest, 80, 0.28);
+  // 海底の圧力感: さらに低域のブラウンノイズ → LP 60 Hz
+  loopAmbientNoise(ctx, dest, 60, 0.16);
 
   // 純正律ドローン A1(55)・E2(82.5)・A2(110) Hz
-  justDrone(ctx, dest, 55, [1, 1.5, 2], 0.07);
+  justDrone(ctx, dest, 55, [1, 1.5, 2], 0.085);
 
   // バイノーラルビート 6 Hz θ波: 瞑想・深いリラックス
   binauralBeat(ctx, dest, 200, 6, 0.035);
@@ -157,26 +176,26 @@ function startOcean(ctx, dest, gen) {
 
 // ── Forest (森) ───────────────────────────────────────────────────────────
 function startForest(ctx, dest, gen) {
-  // 風: pink → BP 80–600 Hz で葉擦れの自然な質感
+  // 風: ブラウンノイズ → BP 120–400 Hz でまろやかな葉擦れの質感
   const windSrc = ctx.createBufferSource();
-  windSrc.buffer = pinkNoiseBuffer(ctx, 4); windSrc.loop = true;
+  windSrc.buffer = brownNoiseBuffer(ctx, 4); windSrc.loop = true;
   const bp = ctx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = 280; bp.Q.value = 0.4;
+  bp.type = 'bandpass'; bp.frequency.value = 220; bp.Q.value = 0.5;
   const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass'; lp.frequency.value = 600;
-  const windG = ctx.createGain(); windG.gain.value = 0.5;
+  lp.type = 'lowpass'; lp.frequency.value = 400;
+  const windG = ctx.createGain(); windG.gain.value = 0.28;
   windSrc.connect(bp); bp.connect(lp); lp.connect(windG); windG.connect(dest);
   windSrc.start(); track(windSrc);
 
   // 風の強弱: 0.07 Hz LFO
   const lfo = ctx.createOscillator();
   const lfoG = ctx.createGain();
-  lfo.frequency.value = 0.07; lfoG.gain.value = 0.18;
+  lfo.frequency.value = 0.07; lfoG.gain.value = 0.1;
   lfo.connect(lfoG); lfoG.connect(windG.gain);
   lfo.start(); track(lfo);
 
-  // 森の低音基盤: pink → LP 60 Hz
-  loopPink(ctx, dest, 60, 0.2);
+  // 森の低音基盤: ブラウンノイズ → LP 55 Hz
+  loopAmbientNoise(ctx, dest, 55, 0.12);
 
   // バイノーラルビート 10 Hz α波: 穏やかな覚醒・集中的リラックス
   binauralBeat(ctx, dest, 220, 10, 0.03);
@@ -226,12 +245,12 @@ function startSpace(ctx, dest, gen) {
     track(osc); track(modOsc);
   });
 
-  // 遠くの星の輝き: pink → HP 5000 Hz → 極めて低音量
+  // 遠くの星の輝き: pink → HP 7000 Hz → ごく微量のきらめき
   const starSrc = ctx.createBufferSource();
   starSrc.buffer = pinkNoiseBuffer(ctx, 4); starSrc.loop = true;
   const hp = ctx.createBiquadFilter();
-  hp.type = 'highpass'; hp.frequency.value = 5000;
-  const starG = ctx.createGain(); starG.gain.value = 0.025;
+  hp.type = 'highpass'; hp.frequency.value = 7000;
+  const starG = ctx.createGain(); starG.gain.value = 0.012;
   starSrc.connect(hp); hp.connect(starG); starG.connect(dest);
   starSrc.start(); track(starSrc);
 
@@ -241,29 +260,29 @@ function startSpace(ctx, dest, gen) {
 
 // ── Fire (焚き火) ─────────────────────────────────────────────────────────
 function startFire(ctx, dest, gen) {
-  // 炉の重低音共鳴: pink → LP 150 Hz
-  const { g: warmG } = loopPink(ctx, dest, 150, 0.45);
+  // 炉の重低音共鳴: ブラウンノイズ → LP 130 Hz
+  const { g: warmG } = loopAmbientNoise(ctx, dest, 130, 0.24);
 
-  // 炎の中域: pink → BP 400–1200 Hz (低音量)
+  // 炎の中域: ブラウンノイズ → BP 300–700 Hz (低音量・まろやか)
   const midSrc = ctx.createBufferSource();
-  midSrc.buffer = pinkNoiseBuffer(ctx, 4); midSrc.loop = true;
+  midSrc.buffer = brownNoiseBuffer(ctx, 4); midSrc.loop = true;
   const midBp = ctx.createBiquadFilter();
-  midBp.type = 'bandpass'; midBp.frequency.value = 600; midBp.Q.value = 0.8;
+  midBp.type = 'bandpass'; midBp.frequency.value = 450; midBp.Q.value = 0.7;
   const midLp = ctx.createBiquadFilter();
-  midLp.type = 'lowpass'; midLp.frequency.value = 1200;
-  const midG = ctx.createGain(); midG.gain.value = 0.14;
+  midLp.type = 'lowpass'; midLp.frequency.value = 700;
+  const midG = ctx.createGain(); midG.gain.value = 0.07;
   midSrc.connect(midBp); midBp.connect(midLp); midLp.connect(midG); midG.connect(dest);
   midSrc.start(); track(midSrc);
 
   // 炎のゆらぎ: 0.4 Hz サイン波でゆったりと強弱
   const flickLfo = ctx.createOscillator();
   const flickG = ctx.createGain();
-  flickLfo.frequency.value = 0.4; flickG.gain.value = 0.1;
+  flickLfo.frequency.value = 0.4; flickG.gain.value = 0.06;
   flickLfo.connect(flickG); flickG.connect(warmG.gain);
   flickLfo.start(); track(flickLfo);
 
   // 炉床の体感振動: 60 Hz + 90 Hz (純正5度)
-  justDrone(ctx, dest, 60, [1, 1.5], 0.065);
+  justDrone(ctx, dest, 60, [1, 1.5], 0.08);
 
   // バイノーラルビート 6 Hz θ波: 焚き火の前での瞑想状態
   binauralBeat(ctx, dest, 200, 6, 0.03);
