@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+      // SW登録は src/main.js で virtual:pwa-register を使い明示的に行う
+      // (起動時・フォアグラウンド復帰時・定期的にバージョンチェックするため)
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'Relax Space',
@@ -36,6 +39,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
         navigateFallback: '/relax_space/index.html',
         navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
+        cleanupOutdatedCaches: true,
       },
       devOptions: {
         enabled: false,

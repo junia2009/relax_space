@@ -1,11 +1,39 @@
 import './style.css';
+import { registerSW } from 'virtual:pwa-register';
 import { initScene, startThemeScene, stopScene } from './scenes.js';
 import { initAudio, startThemeAudio, stopAudio, playBell, setVolume } from './audio.js';
 import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breathing.js';
 import { ACHIEVEMENTS, loadUnlocked, recordTheme, checkAchievements } from './achievements.js';
 
 // ── Version ────────────────────────────────────────────────────────────────
-const VERSION = 'v1.5.8';
+const VERSION = 'v1.5.9';
+
+// ── PWA 更新チェック ─────────────────────────────────────────────────────
+// installed後はブラウザがSWの更新確認を最大24時間サボることがあるため、
+// 起動時・フォアグラウンド復帰時・1時間ごとに明示的に最新版をチェックする。
+// 新しいSWが見つかれば (registerType: autoUpdate) 自動的にアクティベートされ
+// ページがリロードされて最新バージョンが反映される。
+registerSW({
+  immediate: true,
+  onRegisteredSW(swUrl, registration) {
+    if (!registration) return;
+    const checkForUpdate = async () => {
+      if (registration.installing || !navigator.onLine) return;
+      try {
+        const resp = await fetch(swUrl, {
+          cache: 'no-store',
+          headers: { cache: 'no-store', 'cache-control': 'no-cache' },
+        });
+        if (resp?.status === 200) await registration.update();
+      } catch (_) { /* オフライン等は無視 */ }
+    };
+    checkForUpdate();
+    setInterval(checkForUpdate, 60 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') checkForUpdate();
+    });
+  },
+});
 
 // ── App state ──────────────────────────────────────────────────────────────
 const state = {
