@@ -6,7 +6,7 @@ import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breath
 import { ACHIEVEMENTS, loadUnlocked, recordTheme, checkAchievements } from './achievements.js';
 
 // ── Version ────────────────────────────────────────────────────────────────
-const VERSION = 'v1.5.11';
+const VERSION = 'v1.6.0';
 
 // ── PWA 更新チェック ─────────────────────────────────────────────────────
 // installed後はブラウザがSWの更新確認を最大24時間サボることがあるため、
@@ -103,6 +103,7 @@ const THEME_COLORS = {
   forest: '#55dd88',
   space:  '#9966ff',
   fire:   '#ff6600',
+  womb:   '#ff7a8a',
 };
 
 const THEME_GLOW = {
@@ -110,6 +111,7 @@ const THEME_GLOW = {
   forest: 'rgba(85,221,136,0.22)',
   space:  'rgba(153,102,255,0.22)',
   fire:   'rgba(255,102,0,0.22)',
+  womb:   'rgba(255,122,138,0.22)',
 };
 
 const THEME_GLOW_STRONG = {
@@ -117,6 +119,7 @@ const THEME_GLOW_STRONG = {
   forest: 'rgba(85,221,136,0.5)',
   space:  'rgba(153,102,255,0.5)',
   fire:   'rgba(255,102,0,0.5)',
+  womb:   'rgba(255,122,138,0.5)',
 };
 
 // ── Build DOM ──────────────────────────────────────────────────────────────
@@ -152,9 +155,15 @@ document.querySelector('#app').innerHTML = `
             <div class="theme-name">焚き火</div>
             <div class="theme-desc">炎の温もりの中で</div>
           </div>
+          <div class="theme-card" data-theme="womb" data-pos="back">
+            <div class="theme-emoji">👶</div>
+            <div class="theme-name">胎内音</div>
+            <div class="theme-desc">ママのお腹の中の音</div>
+          </div>
         </div>
         <div class="carousel-dots" id="carousel-dots">
           <span class="carousel-dot active"></span>
+          <span class="carousel-dot"></span>
           <span class="carousel-dot"></span>
           <span class="carousel-dot"></span>
           <span class="carousel-dot"></span>
@@ -246,15 +255,22 @@ initBreathing(
 );
 
 // ── Theme carousel ─────────────────────────────────────────────────────────
-const THEMES = ['ocean', 'forest', 'space', 'fire'];
-const CAROUSEL_POS = ['active', 'right', 'back', 'left'];
+const THEMES = ['ocean', 'forest', 'space', 'fire', 'womb'];
 let carouselIdx = 0;
+
+// 選択中の相対位置 → 表示位置 (正面・左右以外は奥に隠す)
+function carouselPos(rel, n) {
+  if (rel === 0) return 'active';
+  if (rel === 1) return 'right';
+  if (rel === n - 1) return 'left';
+  return 'back';
+}
 
 function updateCarousel() {
   const n = THEMES.length;
   document.querySelectorAll('.theme-card').forEach((card, i) => {
     const rel = (i - carouselIdx + n) % n;
-    card.dataset.pos = CAROUSEL_POS[rel];
+    card.dataset.pos = carouselPos(rel, n);
     card.classList.toggle('selected', rel === 0);
   });
   document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
@@ -400,7 +416,8 @@ function startSession() {
         if (state.remaining <= 0) {
           clearInterval(state.timerId);
           state.timerId = null;
-          playBell();
+          // 胎内音は赤ちゃんを寝かしつける用途なので、終了時のベルで起こさない
+          if (state.theme !== 'womb') playBell();
           logSession(state.minutes);
           setTimeout(() => showCompletion(state.minutes), 1200);
         }

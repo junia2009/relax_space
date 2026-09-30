@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WOMB_BPM } from './audio.js';
 
 let renderer = null;
 let scene = null;
@@ -26,6 +27,7 @@ export function startThemeScene(theme) {
   else if (theme === 'forest') buildForest();
   else if (theme === 'space') buildSpace();
   else if (theme === 'fire') buildFire();
+  else if (theme === 'womb') buildWomb();
 
   tick();
 }
@@ -408,5 +410,66 @@ function buildFire() {
       if (eLife[i] > 1 || ePos[i * 3 + 1] > 5) resetEmber(i);
     }
     eGeo.attributes.position.needsUpdate = true;
+  });
+}
+
+// ─── Womb (胎内) ──────────────────────────────────────────────────────────
+// 赤ちゃんを寝かしつける場面を想定し、暗めで刺激の少ない温かな赤の空間に。
+// 中心の光が母体の心拍 (WOMB_BPM) に合わせてゆっくり脈打つ。
+function buildWomb() {
+  scene.background = new THREE.Color(0x0c0204);
+  scene.fog = new THREE.FogExp2(0x0c0204, 0.05);
+  camera.position.set(0, 0, 14);
+
+  scene.add(new THREE.AmbientLight(0x2a0808, 1.2));
+  const heartLight = addLight(0xff4a3a, 2.2, 0, 0, 4, 30);
+
+  const tex = softCircleTexture();
+
+  // 中心の柔らかな光 (大小2枚を重ねて、にじんだ温かさを出す)
+  const glowMat = new THREE.SpriteMaterial({
+    map: tex, color: 0xff5a4a, transparent: true, opacity: 0.32,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const glow = new THREE.Sprite(glowMat);
+  glow.scale.set(11, 11, 1);
+  glow.position.set(0, 0, -4);
+  scene.add(glow);
+
+  const coreMat = new THREE.SpriteMaterial({
+    map: tex, color: 0xff9a80, transparent: true, opacity: 0.18,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const core = new THREE.Sprite(coreMat);
+  core.scale.set(4.5, 4.5, 1);
+  core.position.set(0, 0, -3.5);
+  scene.add(core);
+
+  // 羊水に漂うような、ゆっくり動く粒子
+  const PC = 260;
+  const { geo, pos, mat } = particleSystem(PC, { x: 30, y: 20, z: 18 }, 0xff8877, 0.16);
+  mat.map = tex;
+  mat.opacity = 0.5;
+  const pPhase = Array.from({ length: PC }, () => Math.random() * Math.PI * 2);
+
+  const beatSec = 60 / WOMB_BPM;
+  // 1拍の中での明るさ: lub (0s) と dub (0.3s) に合わせた2つのなだらかな山
+  const pulseAt = t => {
+    const p = t % beatSec;
+    return Math.exp(-((p - 0.06) ** 2) / 0.006) + 0.6 * Math.exp(-((p - 0.36) ** 2) / 0.006);
+  };
+
+  updaters.push(t => {
+    const pulse = pulseAt(t);
+    glowMat.opacity = 0.26 + pulse * 0.1;
+    glow.scale.setScalar(11 + pulse * 0.6);
+    coreMat.opacity = 0.14 + pulse * 0.08;
+    heartLight.intensity = 2 + pulse * 0.8;
+
+    for (let i = 0; i < PC; i++) {
+      pos[i * 3]     += Math.sin(t * 0.12 + pPhase[i]) * 0.003;
+      pos[i * 3 + 1] += Math.cos(t * 0.1 + pPhase[i] * 1.3) * 0.003;
+    }
+    geo.attributes.position.needsUpdate = true;
   });
 }

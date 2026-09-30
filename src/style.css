@@ -194,6 +194,7 @@ html, body {
 .theme-card[data-theme="forest"] { background: linear-gradient(145deg,#050f05,#0a2510); }
 .theme-card[data-theme="space"]  { background: linear-gradient(145deg,#05001a,#0d0028); }
 .theme-card[data-theme="fire"]   { background: linear-gradient(145deg,#180400,#2c0a00); }
+.theme-card[data-theme="womb"]   { background: linear-gradient(145deg,#1a0408,#2e0a12); }
 
 /* ── 深海: 揺れる光の柱 ─────────────────────────────────────────────────── */
 .theme-card[data-theme="ocean"]::before {
@@ -320,6 +321,22 @@ html, body {
 @keyframes fire-flicker-b {
   0%   { opacity:0.35; transform:scaleX(1.06); }
   100% { opacity:0.75; transform:scaleX(0.88); }
+}
+
+/* ── 胎内音: 心拍に合わせて脈打つ温かな光 (66 bpm ≒ 0.91s) ─────────────── */
+.theme-card[data-theme="womb"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(255,90,90,0.4) 0%, rgba(160,20,40,0.18) 45%, transparent 72%);
+  animation: womb-pulse 0.91s ease-out infinite;
+}
+@keyframes womb-pulse {
+  0%   { opacity:0.55; transform:scale(1); }
+  10%  { opacity:1;    transform:scale(1.05); }
+  30%  { opacity:0.7;  transform:scale(1.01); }
+  42%  { opacity:0.88; transform:scale(1.03); }
+  100% { opacity:0.55; transform:scale(1); }
 }
 
 .theme-emoji { font-size: 2.1rem; margin-bottom: 0.55rem; }

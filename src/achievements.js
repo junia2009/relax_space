@@ -9,7 +9,8 @@ export const ACHIEVEMENTS = [
   { id: 'forest',   icon: '🌿', name: '森の精',          desc: '森テーマを使用'            },
   { id: 'space',    icon: '💫', name: '星の旅人',        desc: '宇宙テーマを使用'          },
   { id: 'fire',     icon: '🔥', name: '焚き火の番人',    desc: '焚き火テーマを使用'        },
-  { id: 'alltheme', icon: '🎯', name: '全テーマ制覇',    desc: '全4テーマを使用'           },
+  { id: 'womb',     icon: '👶', name: 'ゆりかご',        desc: '胎内音テーマを使用'        },
+  { id: 'alltheme', icon: '🎯', name: '全テーマ制覇',    desc: '全5テーマを使用'           },
 ];
 
 const ACH_KEY     = 'relax_space_achievements';
@@ -50,7 +51,8 @@ export function checkAchievements(log, streak) {
     forest:   s => s.themes.includes('forest'),
     space:    s => s.themes.includes('space'),
     fire:     s => s.themes.includes('fire'),
-    alltheme: s => s.themes.length >= 4,
+    womb:     s => s.themes.includes('womb'),
+    alltheme: s => s.themes.length >= 5,
   };
 
   const unlocked    = loadUnlocked();
