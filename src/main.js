@@ -1,12 +1,12 @@
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { initScene, startThemeScene, stopScene } from './scenes.js';
-import { initAudio, startThemeAudio, stopAudio, playBell, setVolume } from './audio.js';
+import { initAudio, startThemeAudio, stopAudio, fadeOutAudio, playBell, setVolume } from './audio.js';
 import { PATTERNS, initBreathing, startBreathing, stopBreathing } from './breathing.js';
 import { ACHIEVEMENTS, loadUnlocked, recordTheme, checkAchievements } from './achievements.js';
 
 // ── Version ────────────────────────────────────────────────────────────────
-const VERSION = 'v1.6.0';
+const VERSION = 'v1.7.0';
 
 // ── PWA 更新チェック ─────────────────────────────────────────────────────
 // installed後はブラウザがSWの更新確認を最大24時間サボることがあるため、
@@ -416,8 +416,10 @@ function startSession() {
         if (state.remaining <= 0) {
           clearInterval(state.timerId);
           state.timerId = null;
-          // 胎内音は赤ちゃんを寝かしつける用途なので、終了時のベルで起こさない
-          if (state.theme !== 'womb') playBell();
+          // 胎内音は赤ちゃんを寝かしつける用途なので、終了時のベルで起こさず
+          // 寝かしつけ玩具のように30秒かけて静かに消す
+          if (state.theme === 'womb') fadeOutAudio(30);
+          else playBell();
           logSession(state.minutes);
           setTimeout(() => showCompletion(state.minutes), 1200);
         }

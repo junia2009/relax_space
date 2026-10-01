@@ -14,6 +14,8 @@
  *     ノイズではなくサイン波なので「ノイズ感」を伴わない。
  */
 
+import { createWombSound } from './womb.js';
+
 let audioCtx = null;
 let masterGain = null;
 let currentGeneration = 0;
@@ -40,6 +42,7 @@ export function stopAudio() {
   timers = [];
   activeSources.forEach(n => { try { n.stop(); } catch (_) {} });
   activeSources = [];
+  womb = null;
   if (masterGain) {
     masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.8);
     masterGain = null;
@@ -314,82 +317,37 @@ function startFire(ctx, dest, gen) {
 }
 
 // ── Womb (胎内音 — 赤ちゃん向け) ──────────────────────────────────────────
-// 母体の心拍数 (安静時 60–80 bpm)。scenes.js の脈動演出もこの値に合わせる
-export const WOMB_BPM = 66;
+// 合成の中身と文献的根拠は womb.js を参照。
+// 他テーマと違い、胎内音は「途切れず続くこと」自体が安心材料なので連続再生する。
+// 乳児にはバイノーラルビートは用いない。
+let womb = null;
 
 function startWomb(ctx, dest, gen) {
-  // 子宮内で胎児が聞いている音は、母体の血流の「ザー」という低音ノイズと
-  // 心拍の「ドクン」という鼓動が主体。羊水と腹壁が高音を遮るため、
-  // 実際には 500 Hz 以下が中心のこもった音になる (Querleu et al. 1988)。
-  // そのためホワイトノイズをそのまま流すのではなく、低域寄りのブラウン
-  // ノイズをさらにローパスして使う。また他テーマと違い、この音は
-  // 「途切れず続くこと」自体が安心材料なので、あえて連続再生する。
-  // (新生児への胎内音・ホワイトノイズの鎮静効果: Spencer et al. 1990)
-  // ※ バイノーラルビートは乳児には用いない。
-  const beat = 60 / WOMB_BPM;
-
-  // 血流のザー音: 長めのバッファでループの継ぎ目を目立たなくする
-  const src = ctx.createBufferSource();
-  src.buffer = brownNoiseBuffer(ctx, 8); src.loop = true;
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass'; lp.frequency.value = 480; lp.Q.value = 0.7;
-  const lp2 = ctx.createBiquadFilter();
-  lp2.type = 'lowpass'; lp2.frequency.value = 900;
-  const flowG = ctx.createGain(); flowG.gain.value = 0.2;
-  src.connect(lp); lp.connect(lp2); lp2.connect(flowG); flowG.connect(dest);
-  src.start(); track(src);
-
-  const thudBuffer = brownNoiseBuffer(ctx, 0.3);
-
-  // 心拍1回分: 血流が脈打って「シュワッ」と強まる + 「ドクン(lub)・ドッ(dub)」
-  function heartbeat(t) {
-    // 血流のうねり — 心臓の収縮で血流が一瞬強くなり、こもり具合も少し開く
-    flowG.gain.setTargetAtTime(0.34, t, 0.06);
-    flowG.gain.setTargetAtTime(0.2, t + 0.18, 0.22);
-    lp.frequency.setTargetAtTime(700, t, 0.06);
-    lp.frequency.setTargetAtTime(480, t + 0.18, 0.22);
-
-    // 鼓動: lub (強) → 約0.3秒後に dub (弱)
-    [[0, 0.5, 70], [0.3, 0.32, 82]].forEach(([dt, vol, f0]) => {
-      const tt = t + dt;
-      // 低音のドン: ピッチが下がるサイン波
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(f0, tt);
-      o.frequency.exponentialRampToValueAtTime(f0 * 0.55, tt + 0.14);
-      g.gain.setValueAtTime(0.0001, tt);
-      g.gain.exponentialRampToValueAtTime(vol, tt + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.22);
-      o.connect(g); g.connect(dest);
-      o.start(tt); o.stop(tt + 0.25);
-
-      // こもった打音成分: スマホのスピーカーでも鼓動が聞こえるよう
-      // 200 Hz 付近の短いノイズを重ねる
-      const n = ctx.createBufferSource();
-      n.buffer = thudBuffer;
-      const nlp = ctx.createBiquadFilter();
-      nlp.type = 'lowpass'; nlp.frequency.value = 220; nlp.Q.value = 1.2;
-      const ng = ctx.createGain();
-      ng.gain.setValueAtTime(0.0001, tt);
-      ng.gain.exponentialRampToValueAtTime(vol * 0.9, tt + 0.012);
-      ng.gain.exponentialRampToValueAtTime(0.0001, tt + 0.13);
-      n.connect(nlp); nlp.connect(ng); ng.connect(dest);
-      n.start(tt); n.stop(tt + 0.15);
-    });
-  }
-
+  womb = createWombSound(ctx, dest, { track });
   // setTimeout のゆらぎに左右されないよう、AudioContext の時刻で先読み予約する
-  let nextBeat = ctx.currentTime + 0.1;
   function scheduler() {
     if (!isAlive(gen)) return;
-    while (nextBeat < ctx.currentTime + 0.4) {
-      heartbeat(nextBeat);
-      nextBeat += beat;
-    }
+    womb.scheduleUntil(ctx.currentTime + 0.5);
     schedule(gen, scheduler, 150);
   }
   scheduler();
+}
+
+// 映像の脈動を実際に聞こえている拍に同期させる (0..1)
+export function getWombPulse() {
+  if (!womb || !audioCtx) return 0;
+  return womb.pulseAt(audioCtx.currentTime - (audioCtx.outputLatency || 0));
+}
+
+// タイマー終了時: 寝かしつけ玩具のように、ゆっくり音を消してから止める
+export function fadeOutAudio(seconds) {
+  if (!masterGain || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  masterGain.gain.cancelScheduledValues(t);
+  masterGain.gain.setValueAtTime(masterGain.gain.value, t);
+  masterGain.gain.linearRampToValueAtTime(0, t + seconds);
+  const gen = currentGeneration;
+  schedule(gen, stopAudio, (seconds + 0.5) * 1000);
 }
 
 // ── Bell (タイマー完了) ───────────────────────────────────────────────────

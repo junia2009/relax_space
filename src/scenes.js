@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WOMB_BPM } from './audio.js';
+import { getWombPulse } from './audio.js';
 
 let renderer = null;
 let scene = null;
@@ -415,7 +415,7 @@ function buildFire() {
 
 // ─── Womb (胎内) ──────────────────────────────────────────────────────────
 // 赤ちゃんを寝かしつける場面を想定し、暗めで刺激の少ない温かな赤の空間に。
-// 中心の光が母体の心拍 (WOMB_BPM) に合わせてゆっくり脈打つ。
+// 中心の光は、実際に鳴っている母体大動脈音の拍に同期して脈打つ。
 function buildWomb() {
   scene.background = new THREE.Color(0x0c0204);
   scene.fog = new THREE.FogExp2(0x0c0204, 0.05);
@@ -452,15 +452,8 @@ function buildWomb() {
   mat.opacity = 0.5;
   const pPhase = Array.from({ length: PC }, () => Math.random() * Math.PI * 2);
 
-  const beatSec = 60 / WOMB_BPM;
-  // 1拍の中での明るさ: lub (0s) と dub (0.3s) に合わせた2つのなだらかな山
-  const pulseAt = t => {
-    const p = t % beatSec;
-    return Math.exp(-((p - 0.06) ** 2) / 0.006) + 0.6 * Math.exp(-((p - 0.36) ** 2) / 0.006);
-  };
-
   updaters.push(t => {
-    const pulse = pulseAt(t);
+    const pulse = getWombPulse();
     glowMat.opacity = 0.26 + pulse * 0.1;
     glow.scale.setScalar(11 + pulse * 0.6);
     coreMat.opacity = 0.14 + pulse * 0.08;
