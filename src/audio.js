@@ -1,26 +1,40 @@
 /**
  * Relax Space — Audio Engine
  *
- * 設計根拠:
- *  1. 「具体的な自然音」優先: 連続的な広帯域ノイズの定常再生は脳に
- *     「ノイズ」として認識されやすい。波の打ち寄せ・鳥の囀り・焚き火の
- *     パチパチ・星のきらめきのように、時間的に変化する「音の出来事」
- *     として合成することで、同じ素材(フィルタ済みノイズ・サイン波)でも
- *     聴感上は自然音に近づき、リラックス効果が高まる。
- *  2. バイノーラルビート θ/α波 (4–10 Hz): 左右耳に微妙に異なる周波数を
- *     提示し脳が差分周波数を知覚。瞑想・不安低減と相関。
- *     (Oster 1973; Huang & Charyton 2008; Wahbeh et al. 2007)
- *  3. 純正律ドローン: 整数比倍音列はビート干渉が最小で心理的安定をもたらす。
- *     ノイズではなくサイン波なので「ノイズ感」を伴わない。
+ * 各テーマの音は src/sound/*.js で、研究で報告された音響特性・物理法則から
+ * 合成している (根拠は各ファイル冒頭と README を参照)。ここでは
+ * テーマの切り替え、音量、先読みスケジューリングだけを担う。
+ *
+ * 全テーマ共通の方針:
+ *  1. 「具体的な音の出来事」として合成する: 定常的な広帯域ノイズは脳に
+ *     「ノイズ」として認識されやすい。波・気泡・虫・パチパチのように
+ *     時間的に変化する出来事として鳴らす (胎内音のみ例外: 途切れず続くこと
+ *     自体が安心材料のため連続再生する)。
+ *  2. 人の耳が最も敏感な 3–4 kHz 帯 (外耳道の共鳴) にエネルギーを集めない。
+ *  3. 音の出来事は AudioContext の時刻で先読み予約する
+ *     (setTimeout のゆらぎに左右されない)。
  */
+import { createOcean } from './sound/ocean.js';
+import { createForest } from './sound/forest.js';
+import { createSpace } from './sound/space.js';
+import { createFire } from './sound/fire.js';
+import { createWombSound } from './sound/womb.js';
 
-import { createWombSound } from './womb.js';
+const SOUNDSCAPES = {
+  ocean:  createOcean,
+  forest: createForest,
+  space:  createSpace,
+  fire:   createFire,
+  womb:   createWombSound,
+};
 
 let audioCtx = null;
 let masterGain = null;
 let currentGeneration = 0;
 let activeSources = [];
 let timers = [];
+let soundscape = null;
+let soundscapeTheme = null;
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────
 export function initAudio() {
@@ -42,7 +56,8 @@ export function stopAudio() {
   timers = [];
   activeSources.forEach(n => { try { n.stop(); } catch (_) {} });
   activeSources = [];
-  womb = null;
+  soundscape = null;
+  soundscapeTheme = null;
   if (masterGain) {
     masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.8);
     masterGain = null;
@@ -53,290 +68,29 @@ export function startThemeAudio(theme) {
   stopAudio();
   const ctx = initAudio();
   const gen = currentGeneration;
+  const create = SOUNDSCAPES[theme];
+  if (!create) return;
 
   masterGain = ctx.createGain();
   masterGain.gain.setValueAtTime(0, ctx.currentTime);
   masterGain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 5);
   masterGain.connect(ctx.destination);
 
-  if      (theme === 'ocean')  startOcean(ctx, masterGain, gen);
-  else if (theme === 'forest') startForest(ctx, masterGain, gen);
-  else if (theme === 'space')  startSpace(ctx, masterGain, gen);
-  else if (theme === 'fire')   startFire(ctx, masterGain, gen);
-  else if (theme === 'womb')   startWomb(ctx, masterGain, gen);
-}
+  soundscape = create(ctx, masterGain, { track: node => activeSources.push(node) });
+  soundscapeTheme = theme;
 
-function isAlive(gen) { return gen === currentGeneration; }
-function track(node) { activeSources.push(node); return node; }
-// generation が変わったら自動キャンセルされる setTimeout
-function schedule(gen, fn, ms) {
-  const id = setTimeout(() => { if (isAlive(gen)) fn(); }, ms);
-  timers.push(id);
-  return id;
-}
-
-// ── ブラウンノイズ生成 (ランダムウォーク積分) ─────────────────────────────
-// 波の水音・葉擦れ・炎のパチパチ等、短い「音の出来事」の素材として使う。
-// 単独で定常再生すると「ノイズ」に聞こえるため、必ずエンベロープで
-// 時間変化させて使用する。
-function brownNoiseBuffer(ctx, seconds = 4) {
-  const n = ctx.sampleRate * seconds;
-  const buf = ctx.createBuffer(1, n, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < n; i++) {
-    const w = Math.random() * 2 - 1;
-    last = (last + w * 0.02) / 1.02;
-    d[i] = last * 3.2;
-  }
-  return buf;
-}
-
-// ── バイノーラルビート ─────────────────────────────────────────────────────
-function binauralBeat(ctx, dest, baseFreq, beatFreq, vol = 0.03) {
-  [[-1, 0], [1, beatFreq]].forEach(([pan, offset]) => {
-    const osc = ctx.createOscillator();
-    const panner = ctx.createStereoPanner();
-    const g = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = baseFreq + offset;
-    panner.pan.value = pan;
-    g.gain.setValueAtTime(0, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(vol, ctx.currentTime + 8);
-    osc.connect(panner); panner.connect(g); g.connect(dest);
-    osc.start();
-    track(osc);
-  });
-}
-
-// ── 純正律ドローン ─────────────────────────────────────────────────────────
-function justDrone(ctx, dest, root, ratios, gainPerPartial = 0.06) {
-  ratios.forEach((r, i) => {
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(gainPerPartial, ctx.currentTime + 6 + i);
-    osc.type = 'sine';
-    osc.frequency.value = root * r;
-    osc.detune.value = (Math.random() - 0.5) * 2;
-    osc.connect(g); g.connect(dest);
-    osc.start();
-    track(osc);
-  });
-}
-
-// ── Ocean (波の音) ────────────────────────────────────────────────────────
-function startOcean(ctx, dest, gen) {
-  // 波音の素材: ブラウンノイズ → バンドパス。常時鳴らすのではなく
-  // ゲイン/フィルタを「寄せて返す」エンベロープで動かし、波の打ち寄せに聞かせる
-  const src = ctx.createBufferSource();
-  src.buffer = brownNoiseBuffer(ctx, 4); src.loop = true;
-  const bp = ctx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = 300; bp.Q.value = 0.6;
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass'; lp.frequency.value = 900;
-  const waveG = ctx.createGain(); waveG.gain.value = 0.0001;
-  src.connect(bp); bp.connect(lp); lp.connect(waveG); waveG.connect(dest);
-  src.start(); track(src);
-
-  function scheduleWave() {
-    if (!isAlive(gen)) return;
-    const rise = 1.8 + Math.random() * 1.4;   // 押し波が満ちてくる時間
-    const fall = 2.2 + Math.random() * 2;     // 引き波・泡が引く時間
-    const peak = 0.3 + Math.random() * 0.14;
-    const t0 = ctx.currentTime;
-    waveG.gain.cancelScheduledValues(t0);
-    waveG.gain.setValueAtTime(waveG.gain.value, t0);
-    waveG.gain.linearRampToValueAtTime(peak, t0 + rise);
-    // 波が完全に引き切るまで減衰させ、合間は無音に近づける(ノイズが残らないように)
-    waveG.gain.exponentialRampToValueAtTime(0.0001, t0 + rise + fall);
-    bp.frequency.cancelScheduledValues(t0);
-    bp.frequency.setValueAtTime(bp.frequency.value, t0);
-    bp.frequency.linearRampToValueAtTime(560, t0 + rise);
-    bp.frequency.linearRampToValueAtTime(260, t0 + rise + fall);
-    schedule(gen, scheduleWave, (rise + fall - 0.6) * 1000);
-  }
-  scheduleWave();
-
-  // 深海の安定感: 純正律ドローン A1(55)・E2(82.5)・A2(110) Hz
-  justDrone(ctx, dest, 55, [1, 1.5, 2], 0.06);
-
-  // バイノーラルビート 6 Hz θ波: 瞑想・深いリラックス
-  binauralBeat(ctx, dest, 200, 6, 0.03);
-}
-
-// ── Forest (小鳥の囀り) ───────────────────────────────────────────────────
-function startForest(ctx, dest, gen) {
-  // そよ風: 連続再生せず、時々ゆるやかに吹いて止む「ガスト」として表現
-  function scheduleBreeze() {
-    if (!isAlive(gen)) return;
-    const src = ctx.createBufferSource();
-    src.buffer = brownNoiseBuffer(ctx, 3); src.loop = true;
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass'; bp.frequency.value = 250 + Math.random() * 150; bp.Q.value = 0.5;
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 500;
-    const g = ctx.createGain(); g.gain.setValueAtTime(0, ctx.currentTime);
-    src.connect(bp); bp.connect(lp); lp.connect(g); g.connect(dest);
-    src.start(); track(src);
-    const dur = 4 + Math.random() * 3;
-    const t0 = ctx.currentTime;
-    g.gain.linearRampToValueAtTime(0.1, t0 + dur * 0.4);
-    g.gain.linearRampToValueAtTime(0, t0 + dur);
-    schedule(gen, () => { try { src.stop(); } catch (_) {} }, (dur + 0.2) * 1000);
-    schedule(gen, scheduleBreeze, (dur + 8 + Math.random() * 14) * 1000);
-  }
-  scheduleBreeze();
-
-  // バイノーラルビート 10 Hz α波: 穏やかな覚醒・集中的リラックス
-  binauralBeat(ctx, dest, 220, 10, 0.025);
-
-  // 小鳥の囀り: 純正律比の短いサイン波フレーズ。2種の鳴き方をランダムに使用
-  // 人間の耳が最も敏感な3〜4kHz帯を避け、各音にわずかなピッチの「すべり」を
-  // つけることで、静的なビープ音ではなく自然な鳴き声に近づける
-  function chirpPhrase(t0, intervals, base) {
-    intervals.forEach(([dt, ratio]) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      const lp = ctx.createBiquadFilter();
-      const panner = ctx.createStereoPanner();
-      const t = t0 + dt;
-      const freq = base * ratio;
-      o.frequency.setValueAtTime(freq * 0.92, t);
-      o.frequency.linearRampToValueAtTime(freq, t + 0.05);
-      o.frequency.linearRampToValueAtTime(freq * 0.97, t + 0.22);
-      lp.type = 'lowpass'; lp.frequency.value = 3200;
-      panner.pan.value = (Math.random() - 0.5) * 1.6;
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.02, t + 0.05);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
-      o.connect(lp); lp.connect(g); g.connect(panner); panner.connect(dest);
-      o.start(t); o.stop(t + 0.28);
-    });
-  }
-  function scheduleBird() {
-    if (!isAlive(gen)) return;
-    schedule(gen, () => {
-      const base = 1300 + Math.random() * 600; // 1300–1900 Hz: 鋭すぎない囀りの帯域
-      const t0 = ctx.currentTime;
-      if (Math.random() < 0.5) {
-        // さえずり: 上昇フレーズ
-        chirpPhrase(t0, [[0, 1], [0.18, 1.25], [0.38, 1.4], [0.56, 1]], base);
-      } else {
-        // 短い呼び鳴き: 2音の繰り返し
-        chirpPhrase(t0, [[0, 1], [0.2, 1.4]], base);
-        chirpPhrase(t0, [[0.55, 1], [0.75, 1.4]], base * 1.06);
-      }
-      scheduleBird();
-    }, (5 + Math.random() * 10) * 1000);
-  }
-  scheduleBird();
-}
-
-// ── Space (宇宙) ──────────────────────────────────────────────────────────
-function startSpace(ctx, dest, gen) {
-  // 超低音パッド: 40 Hz 基音の純正律倍音列 — 宇宙的な重力感 (サイン波・ノイズ無し)
-  justDrone(ctx, dest, 40, [1, 1.5, 2, 2.5, 3], 0.055);
-
-  // 各倍音に極めて遅いLFO (0.02–0.06 Hz) で宇宙的な揺らぎ
-  [40, 60, 80, 100, 120].forEach((freq, i) => {
-    const osc = ctx.createOscillator();
-    const modOsc = ctx.createOscillator();
-    const modG = ctx.createGain();
-    const g = ctx.createGain();
-    osc.type = 'sine'; osc.frequency.value = freq;
-    modOsc.frequency.value = 0.02 + i * 0.008;
-    modG.gain.value = 1.5;
-    g.gain.setValueAtTime(0, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(0.022, ctx.currentTime + 8 + i * 1.5);
-    modOsc.connect(modG); modG.connect(osc.detune);
-    osc.connect(g); g.connect(dest);
-    osc.start(); modOsc.start();
-    track(osc); track(modOsc);
-  });
-
-  // 星のきらめき: 連続ノイズではなく、まばらに鳴る短いベル状のピン音。
-  // 3〜4kHzの耳が最も敏感な帯域は避け、間隔も空けて「重なって鳴り続ける」
-  // ことを防ぐ(でないと高音の塊がノイズのように聞こえてしまう)
-  function scheduleTwinkle() {
-    if (!isAlive(gen)) return;
-    schedule(gen, () => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      const lp = ctx.createBiquadFilter();
-      const panner = ctx.createStereoPanner();
-      const t = ctx.currentTime;
-      o.type = 'sine';
-      o.frequency.value = 1500 + Math.random() * 2000; // 1500–3500 Hz
-      lp.type = 'lowpass'; lp.frequency.value = 4000;
-      panner.pan.value = (Math.random() - 0.5) * 1.8;
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.012, t + 0.05);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
-      o.connect(lp); lp.connect(g); g.connect(panner); panner.connect(dest);
-      o.start(t); o.stop(t + 0.8);
-      scheduleTwinkle();
-    }, (4 + Math.random() * 6) * 1000);
-  }
-  scheduleTwinkle();
-
-  // バイノーラルビート 4 Hz θ/δ境界: 深い瞑想・まどろみ
-  binauralBeat(ctx, dest, 180, 4, 0.035);
-}
-
-// ── Fire (焚き火) ─────────────────────────────────────────────────────────
-function startFire(ctx, dest, gen) {
-  // 炉の温かみ: 純正律ドローンのみ (60 Hz + 90 Hz, 純正5度) — ノイズ無しの低音基盤
-  justDrone(ctx, dest, 60, [1, 1.5], 0.07);
-
-  // 薪のパチパチ: 短いノイズバーストを不規則な間隔で鳴らす
-  function crackle() {
-    if (!isAlive(gen)) return;
-    schedule(gen, () => {
-      const t0 = ctx.currentTime;
-      const pops = Math.random() < 0.3 ? 2 : 1; // 時々連続2発
-      for (let i = 0; i < pops; i++) {
-        const t = t0 + i * (0.04 + Math.random() * 0.05);
-        const src = ctx.createBufferSource();
-        src.buffer = brownNoiseBuffer(ctx, 0.3);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass'; bp.frequency.value = 900 + Math.random() * 2200; bp.Q.value = 3;
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0.16 + Math.random() * 0.1, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05 + Math.random() * 0.04);
-        src.connect(bp); bp.connect(g); g.connect(dest);
-        src.start(t); src.stop(t + 0.12);
-      }
-      crackle();
-    }, (0.25 + Math.random() * 1.6) * 1000);
-  }
-  crackle();
-
-  // バイノーラルビート 6 Hz θ波: 焚き火の前での瞑想状態
-  binauralBeat(ctx, dest, 200, 6, 0.03);
-}
-
-// ── Womb (胎内音 — 赤ちゃん向け) ──────────────────────────────────────────
-// 合成の中身と文献的根拠は womb.js を参照。
-// 他テーマと違い、胎内音は「途切れず続くこと」自体が安心材料なので連続再生する。
-// 乳児にはバイノーラルビートは用いない。
-let womb = null;
-
-function startWomb(ctx, dest, gen) {
-  womb = createWombSound(ctx, dest, { track });
-  // setTimeout のゆらぎに左右されないよう、AudioContext の時刻で先読み予約する
   function scheduler() {
-    if (!isAlive(gen)) return;
-    womb.scheduleUntil(ctx.currentTime + 0.5);
-    schedule(gen, scheduler, 150);
+    if (gen !== currentGeneration) return;
+    soundscape.scheduleUntil(ctx.currentTime + 0.5);
+    timers.push(setTimeout(scheduler, 150));
   }
   scheduler();
 }
 
-// 映像の脈動を実際に聞こえている拍に同期させる (0..1)
+// 胎内音: 映像の脈動を実際に聞こえている拍に同期させる (0..1)
 export function getWombPulse() {
-  if (!womb || !audioCtx) return 0;
-  return womb.pulseAt(audioCtx.currentTime - (audioCtx.outputLatency || 0));
+  if (soundscapeTheme !== 'womb' || !audioCtx) return 0;
+  return soundscape.pulseAt(audioCtx.currentTime - (audioCtx.outputLatency || 0));
 }
 
 // タイマー終了時: 寝かしつけ玩具のように、ゆっくり音を消してから止める
@@ -347,7 +101,7 @@ export function fadeOutAudio(seconds) {
   masterGain.gain.setValueAtTime(masterGain.gain.value, t);
   masterGain.gain.linearRampToValueAtTime(0, t + seconds);
   const gen = currentGeneration;
-  schedule(gen, stopAudio, (seconds + 0.5) * 1000);
+  timers.push(setTimeout(() => { if (gen === currentGeneration) stopAudio(); }, (seconds + 0.5) * 1000));
 }
 
 // ── Bell (タイマー完了) ───────────────────────────────────────────────────

@@ -24,6 +24,8 @@
  *  - 左室駆出時間 LVET(女性) ≈ 418 − 1.6 × HR [ms] (Weissler 1968)。
  */
 
+import { noiseBuffer, biquad, chain } from './util.js';
+
 // ── 生理学パラメータ ───────────────────────────────────────────────────────
 export const WOMB = {
   hr: 80,             // 母体の安静時心拍 [bpm] (妊娠後期)
@@ -47,37 +49,6 @@ const LEVEL = {
   bowel:      0.05,   // 腸音
   virtualBass: 0.22,  // 小型スピーカー向けの倍音 (後述)
 };
-
-// ── ユーティリティ ─────────────────────────────────────────────────────────
-function noiseBuffer(ctx, seconds, brown) {
-  const n = Math.floor(ctx.sampleRate * seconds);
-  const buf = ctx.createBuffer(1, n, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < n; i++) {
-    const w = Math.random() * 2 - 1;
-    if (brown) { last = (last + w * 0.02) / 1.02; d[i] = last * 3.5; }
-    else d[i] = w * 0.5;
-  }
-  // ループの継ぎ目でクリックが出ないよう両端を短くクロスフェード
-  const fade = Math.floor(ctx.sampleRate * 0.05);
-  for (let i = 0; i < fade; i++) {
-    const a = i / fade;
-    d[i] = d[i] * a + d[n - fade + i] * (1 - a);
-  }
-  return buf;
-}
-
-function biquad(ctx, type, freq, Q = 0.707, gain = 0) {
-  const f = ctx.createBiquadFilter();
-  f.type = type; f.frequency.value = freq; f.Q.value = Q; f.gain.value = gain;
-  return f;
-}
-
-function chain(...nodes) {
-  for (let i = 0; i < nodes.length - 1; i++) nodes[i].connect(nodes[i + 1]);
-  return nodes[nodes.length - 1];
-}
 
 // 動脈の流速波形 (拡張期の流速を 0、収縮期のピークを 1 とした脈動成分)
 // 速やかに立ち上がり (加速時間 accel)、指数関数的に減衰する
